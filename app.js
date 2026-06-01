@@ -335,162 +335,6 @@ function applyScale() {
   });
 }
 
-// ---- Unit Normalization ----
-
-// Conversion tables — each entry: [unit aliases, value in tsp]
-// Volume family (tsp-based)
-const VOLUME_LADDER = [
-  { names: ['tsp', 'teaspoon', 'teaspoons'],        tsp: 1 },
-  { names: ['tbsp', 'tablespoon', 'tablespoons'],   tsp: 3 },
-  { names: ['fl oz', 'fluid oz', 'fluid ounce', 'fluid ounces'], tsp: 6 },
-  { names: ['cup', 'cups'],                          tsp: 48 },
-  { names: ['pint', 'pints', 'pt'],                  tsp: 96 },
-  { names: ['quart', 'quarts', 'qt'],                tsp: 192 },
-  { names: ['gallon', 'gallons', 'gal'],             tsp: 768 },
-];
-
-// Weight family (oz-based)
-const WEIGHT_LADDER = [
-  { names: ['oz', 'ounce', 'ounces'],  oz: 1 },
-  { names: ['lb', 'lbs', 'pound', 'pounds'], oz: 16 },
-];
-
-// Canonical display names (singular/plural handled separately)
-const UNIT_DISPLAY = {
-  tsp:    { s: 'tsp',    p: 'tsp'    },
-  tbsp:   { s: 'tbsp',   p: 'tbsp'   },
-  'fl oz':{ s: 'fl oz',  p: 'fl oz'  },
-  cup:    { s: 'cup',    p: 'cups'   },
-  pint:   { s: 'pint',   p: 'pints'  },
-  quart:  { s: 'quart',  p: 'quarts' },
-  gallon: { s: 'gallon', p: 'gallons'},
-  oz:     { s: 'oz',     p: 'oz'     },
-  lb:     { s: 'lb',     p: 'lbs'    },
-};
-
-function normalizeUnit(unitRaw) {
-  if (!unitRaw) return null;
-  const u = unitRaw.toLowerCase().trim();
-  for (const step of VOLUME_LADDER) {
-    if (step.names.includes(u)) return { family: 'volume', canonical: step.names[0], tsp: step.tsp };
-  }
-  for (const step of WEIGHT_LADDER) {
-    if (step.names.includes(u)) return { family: 'weight', canonical: step.names[0], oz: step.oz };
-  }
-  return null; // unknown unit — pass through as-is
-}
-
-function normalizeQty(qty, unitInfo) {
-  // Returns array of { qty, unit } parts, e.g. [{qty:1,unit:'cup'},{qty:2,unit:'tbsp'}]
-  if (!unitInfo) return null;
-
-  if (unitInfo.family === 'volume') {
-    const totalTsp = qty * unitInfo.tsp;
-    return splitVolume(totalTsp);
-  }
-
-  if (unitInfo.family === 'weight') {
-    const totalOz = qty * unitInfo.oz;
-    return splitWeight(totalOz);
-  }
-
-  return null;
-}
-
-function splitVolume(totalTsp) {
-  const parts = [];
-  let remaining = totalTsp;
-
-  // Work down from gallon to tsp
-  const steps = [...VOLUME_LADDER].reverse(); // gallon → tsp
-  for (const step of steps) {
-    if (remaining <= 0) break;
-    const count = remaining / step.tsp;
-    const whole = Math.floor(count + 0.001); // small epsilon for float errors
-    if (whole >= 1) {
-      const fracRemainder = count - whole;
-      const frac = snapFraction(fracRemainder);
-      const display = whole > 0 && frac
-        ? `${whole}${frac}`
-        : frac || String(whole);
-      parts.push({ display, unit: step.names[0] });
-      remaining -= whole * step.tsp;
-    } else if (parts.length === 0 && step === VOLUME_LADDER[0]) {
-      // We're at tsp and have less than 1 — show as fraction
-      const frac = snapFraction(count);
-      parts.push({ display: frac || formatDecimal(count), unit: step.names[0] });
-      remaining = 0;
-    }
-  }
-
-  // If nothing matched cleanly, show as tsp
-  if (parts.length === 0) {
-    parts.push({ display: formatDecimal(totalTsp), unit: 'tsp' });
-  }
-
-  return parts;
-}
-
-function splitWeight(totalOz) {
-  const parts = [];
-  let remaining = totalOz;
-
-  if (remaining >= 16) {
-    const lbs = Math.floor(remaining / 16);
-    const fracLbs = remaining / 16 - lbs;
-    const frac = snapFraction(fracLbs);
-    const display = lbs > 0 && frac ? `${lbs}${frac}` : frac || String(lbs);
-    parts.push({ display, unit: 'lb' });
-    remaining -= lbs * 16;
-  }
-
-  if (remaining > 0.01) {
-    const frac = snapFraction(remaining / Math.ceil(remaining));
-    const whole = Math.floor(remaining);
-    const fracPart = snapFraction(remaining - whole);
-    const display = whole > 0 && fracPart
-      ? `${whole}${fracPart}`
-      : fracPart || formatDecimal(remaining);
-    parts.push({ display, unit: 'oz' });
-  }
-
-  if (parts.length === 0) parts.push({ display: formatDecimal(totalOz), unit: 'oz' });
-  return parts;
-}
-
-function snapFraction(dec) {
-  const fracs = [
-    [0,    ''],
-    [0.125,'⅛'],
-    [0.25, '¼'],
-    [0.333,'⅓'],
-    [0.375,'⅜'],
-    [0.5,  '½'],
-    [0.625,'⅝'],
-    [0.667,'⅔'],
-    [0.75, '¾'],
-    [0.875,'⅞'],
-    [1,    ''],
-  ];
-  for (const [val, sym] of fracs) {
-    if (Math.abs(dec - val) < 0.04) return sym;
-  }
-  return null;
-}
-
-function formatDecimal(n) {
-  if (n === Math.floor(n)) return String(n);
-  return String(Math.round(n * 100) / 100);
-}
-
-function displayUnit(canonical, qty) {
-  const d = UNIT_DISPLAY[canonical];
-  if (!d) return canonical;
-  // Use plural if qty > 1 (roughly)
-  const num = parseFloat(qty);
-  return num > 1 ? d.p : d.s;
-}
-
 // ---- Helpers ----
 function buildIngText(ing, sf) {
   let html = '';
@@ -498,33 +342,16 @@ function buildIngText(ing, sf) {
   if (ing.quantity !== '' && ing.quantity !== null && ing.quantity !== undefined) {
     const raw = parseFloat(ing.quantity);
     if (!isNaN(raw)) {
-      const scaled = Math.round(raw * sf * 10000) / 10000;
-      const unitInfo = normalizeUnit(ing.unit);
-      const parts = unitInfo ? normalizeQty(scaled, unitInfo) : null;
+      const scaled = Math.round(raw * sf * 1000) / 1000;
+      const display = formatQty(scaled);
+      html += `<span class="qty">${display}</span> `;
+    }
+  }
 
-      if (parts && parts.length > 0) {
-        // Normalized display: "1 cup 2 tbsp"
-        const partsHtml = parts.map(p => {
-          const uLabel = displayUnit(p.unit, parseFloat(p.display));
-          return `<span class="qty">${p.display}</span> <span class="unit">${uLabel}</span>`;
-        }).join(' ');
-        html += partsHtml + ' ';
-      } else {
-        // Unknown unit — show as-is
-        const display = formatQty(scaled);
-        html += `<span class="qty">${display}</span> `;
-        if (ing.unit && ing.unit !== 'to taste') {
-          html += `<span class="unit">${escHtml(ing.unit)}</span> `;
-        } else if (ing.unit === 'to taste') {
-          html += `<span class="unit">to taste</span> `;
-        }
-      }
-    }
-  } else {
-    // No quantity — just show unit if "to taste" or similar
-    if (ing.unit) {
-      html += `<span class="unit">${escHtml(ing.unit)}</span> `;
-    }
+  if (ing.unit && ing.unit !== 'to taste') {
+    html += `<span class="unit">${escHtml(ing.unit)}</span> `;
+  } else if (ing.unit === 'to taste') {
+    html += `<span class="unit">to taste</span> `;
   }
 
   html += `<span class="ing-name">${escHtml(ing.ingredient)}</span>`;
@@ -538,9 +365,10 @@ function buildIngText(ing, sf) {
 
 function formatQty(n) {
   if (n === Math.floor(n)) return String(n);
-  const fracs = [[0.125,'⅛'],[0.25,'¼'],[0.333,'⅓'],[0.5,'½'],[0.667,'⅔'],[0.75,'¾'],[0.875,'⅞']];
+  // Nice fractions
+  const fracs = [[0.25,'¼'],[0.33,'⅓'],[0.5,'½'],[0.67,'⅔'],[0.75,'¾']];
   const whole = Math.floor(n);
-  const dec   = Math.round((n - whole) * 1000) / 1000;
+  const dec   = Math.round((n - whole) * 100) / 100;
   for (const [val, sym] of fracs) {
     if (Math.abs(dec - val) < 0.04) {
       return whole > 0 ? `${whole}${sym}` : sym;
