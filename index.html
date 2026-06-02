@@ -60,21 +60,23 @@
         </div>
       </div>
 
-      <div class="filter-section">
-        <label class="filter-label" for="tag-select">Filter by category</label>
-        <div class="select-wrapper">
-          <select id="tag-select">
-            <option value="all">All Recipes</option>
-          </select>
-          <svg class="select-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-        </div>
-      </div>
-
+      <!-- RECIPE SELECT (now above category filter) -->
       <div class="recipe-select-section">
         <label class="filter-label" for="recipe-select">Select a recipe</label>
         <div class="select-wrapper">
           <select id="recipe-select">
             <option value="">— Choose a recipe —</option>
+          </select>
+          <svg class="select-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+      </div>
+
+      <!-- CATEGORY FILTER (now below recipe select) -->
+      <div class="filter-section">
+        <label class="filter-label" for="tag-select">Filter by category</label>
+        <div class="select-wrapper">
+          <select id="tag-select">
+            <option value="all">— Select Category —</option>
           </select>
           <svg class="select-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
         </div>
@@ -106,6 +108,13 @@
     <main class="recipe-main" id="recipe-content">
       <!-- Dynamically populated -->
     </main>
+  </div>
+
+  <!-- UPDATE BANNER -->
+  <div id="update-banner" class="update-banner hidden">
+    <span>🔄 A new version is available!</span>
+    <button id="btn-update">Update Now</button>
+    <button id="btn-dismiss-update" class="dismiss-update">Later</button>
   </div>
 
   <script src="app.js"></script>
