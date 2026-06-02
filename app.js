@@ -29,6 +29,8 @@ const restoreBanner = document.getElementById('restore-banner');
 const lastUpdated   = document.getElementById('last-updated');
 const loadingOverlay = document.getElementById('loading-overlay');
 const recipeContent = document.getElementById('recipe-content');
+const searchInput    = document.getElementById('search-input');
+const btnClearSearch = document.getElementById('btn-clear-search');
 
 // ---- Init ----
 window.addEventListener('load', init);
@@ -111,17 +113,37 @@ function populateUI() {
   populateRecipeList('all');
 }
 
-function populateRecipeList(tag) {
+function populateRecipeList(tag, search) {
   recipeSelect.innerHTML = '<option value="">— Choose a recipe —</option>';
   btnLoad.disabled = true;
 
-  let names = allData.recipeList;
+  const term = (search || '').toLowerCase().trim();
+
+  let recipes = allData.recipes;
+
+  // Filter by tag first
   if (tag !== 'all') {
-    names = allData.recipes
-      .filter(r => r.tags && r.tags.split(',').map(t => t.trim()).includes(tag))
-      .map(r => r.name)
-      .sort();
+    recipes = recipes.filter(r =>
+      r.tags && r.tags.split(',').map(t => t.trim()).includes(tag)
+    );
   }
+
+  // Then filter by search term (instring across name, tags, ingredients)
+  if (term) {
+    recipes = recipes.filter(r => {
+      // Search recipe name
+      if (r.name.toLowerCase().includes(term)) return true;
+      // Search tags
+      if (r.tags && r.tags.toLowerCase().includes(term)) return true;
+      // Search ingredient names
+      if (r.ingredients && r.ingredients.some(ing =>
+        ing.ingredient && ing.ingredient.toLowerCase().includes(term)
+      )) return true;
+      return false;
+    });
+  }
+
+  const names = recipes.map(r => r.name).sort();
 
   names.forEach(name => {
     const opt = document.createElement('option');
@@ -133,7 +155,20 @@ function populateRecipeList(tag) {
 
 // ---- Events: Home ----
 tagSelect.addEventListener('change', () => {
-  populateRecipeList(tagSelect.value);
+  populateRecipeList(tagSelect.value, searchInput.value);
+});
+
+searchInput.addEventListener('input', () => {
+  const hasText = searchInput.value.length > 0;
+  btnClearSearch.classList.toggle('hidden', !hasText);
+  populateRecipeList(tagSelect.value, searchInput.value);
+});
+
+btnClearSearch.addEventListener('click', () => {
+  searchInput.value = '';
+  btnClearSearch.classList.add('hidden');
+  searchInput.focus();
+  populateRecipeList(tagSelect.value, '');
 });
 
 recipeSelect.addEventListener('change', () => {
