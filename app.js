@@ -54,9 +54,29 @@ async function init() {
 
 // ---- Service Worker ----
 function registerSW() {
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js').catch(() => {});
-  }
+  if (!('serviceWorker' in navigator)) return;
+
+  navigator.serviceWorker.register('sw.js').then(reg => {
+    reg.addEventListener('updatefound', () => {
+      const newWorker = reg.installing;
+      newWorker.addEventListener('statechange', () => {
+        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+          // New version available — show banner
+          const banner = document.getElementById('update-banner');
+          if (banner) banner.classList.remove('hidden');
+
+          document.getElementById('btn-update').addEventListener('click', () => {
+            newWorker.postMessage('skipWaiting');
+            window.location.reload();
+          });
+
+          document.getElementById('btn-dismiss-update').addEventListener('click', () => {
+            banner.classList.add('hidden');
+          });
+        }
+      });
+    });
+  }).catch(() => {});
 }
 
 // ---- Fetch ----
@@ -102,7 +122,7 @@ function populateUI() {
     if (r.tags) r.tags.split(',').forEach(t => tagSet.add(t.trim()));
   });
 
-  tagSelect.innerHTML = '<option value="all">All Recipes</option>';
+  tagSelect.innerHTML = '<option value="all">— Select Category —</option>';
   [...tagSet].sort().forEach(tag => {
     const opt = document.createElement('option');
     opt.value = tag;
@@ -122,7 +142,7 @@ function populateRecipeList(tag, search) {
   let recipes = allData.recipes;
 
   // Filter by tag first
-  if (tag !== 'all') {
+  if (tag !== 'all' && tag !== '') {
     recipes = recipes.filter(r =>
       r.tags && r.tags.split(',').map(t => t.trim()).includes(tag)
     );
@@ -161,7 +181,7 @@ tagSelect.addEventListener('change', () => {
 searchInput.addEventListener('input', () => {
   const hasText = searchInput.value.length > 0;
   btnClearSearch.classList.toggle('hidden', !hasText);
-  populateRecipeList(tagSelect.value, searchInput.value);
+  populateRecipeList(tagSelect.value === '— Select Category —' ? 'all' : tagSelect.value, searchInput.value);
 });
 
 btnClearSearch.addEventListener('click', () => {
