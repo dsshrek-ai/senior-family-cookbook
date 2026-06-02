@@ -1,4 +1,4 @@
-const CACHE = 'sfc-v4';
+const CACHE = 'sfc-v5';
 const ASSETS = [
   './',
   './index.html',
@@ -36,4 +36,9 @@ self.addEventListener('fetch', e => {
   e.respondWith(
     caches.match(e.request).then(cached => cached || fetch(e.request))
   );
+});
+
+// Notify clients when a new version is available
+self.addEventListener('message', e => {
+  if (e.data === 'skipWaiting') self.skipWaiting();
 });
