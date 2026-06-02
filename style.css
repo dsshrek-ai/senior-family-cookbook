@@ -714,3 +714,54 @@ html, body {
   color: var(--text-light);
   font-style: italic;
 }
+
+/* ============ UPDATE BANNER ============ */
+.update-banner {
+  position: fixed;
+  bottom: calc(16px + var(--safe-bottom));
+  left: 16px;
+  right: 16px;
+  background: var(--green-dark);
+  color: var(--white);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: var(--shadow-lg);
+  z-index: 200;
+  animation: slideUp 0.3s ease;
+}
+
+.update-banner.hidden { display: none; }
+
+.update-banner span {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+#btn-update {
+  background: var(--brown-light);
+  color: var(--white);
+  border: none;
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--font-body);
+  cursor: pointer;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.dismiss-update {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.65);
+  font-size: 13px;
+  font-family: var(--font-body);
+  cursor: pointer;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+}
