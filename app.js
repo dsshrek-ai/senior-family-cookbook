@@ -53,6 +53,81 @@ async function init() {
 }
 
 // ---- Service Worker ----
+// ---- Print Recipe ----
+function printRecipe() {
+  if (!currentRecipe) return;
+  const r       = currentRecipe;
+  const serving = parseFloat(document.getElementById('servings-input')?.value) || baseServings;
+  const sf      = serving / baseServings;
+  const scaled  = Math.round(serving * 10) / 10;
+
+  // Build ingredients HTML
+  let ingRows = '';
+  (r.ingredients || []).forEach(ing => {
+    let qty = '';
+    if (ing.quantity !== '' && ing.quantity !== null && ing.quantity !== undefined) {
+      const raw = parseFloat(ing.quantity);
+      if (!isNaN(raw)) qty = formatQty(raw * sf);
+    }
+    const unit  = ing.unit  || '';
+    const name  = ing.ingredient || '';
+    const notes = ing.notes ? ` <em>(${ing.notes})</em>` : '';
+    ingRows += `<tr><td class="qty-col">${qty}</td><td class="unit-col">${unit}</td><td>${name}${notes}</td></tr>`;
+  });
+
+  // Build steps HTML
+  let stepsList = '';
+  (r.steps || []).forEach((step, i) => {
+    stepsList += `<li>${step}</li>`;
+  });
+
+  const storyBlock = r.story ? `<div class="story"><strong>About this recipe:</strong><br>${r.story}</div>` : '';
+  const nutriBlock = r.nutrition ? `<div class="story"><strong>Nutrition:</strong><br>${r.nutrition}</div>` : '';
+  const scaleNote  = sf !== 1 ? ` <span class="scale-note">(scaled to ${scaled} servings)</span>` : '';
+
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>${r.name}</title>
+<style>
+  body { font-family: Georgia, serif; font-size: 13px; margin: 24px 32px; color: #2c2c2c; max-width: 700px; }
+  h1   { font-size: 24px; color: #3D5A3E; margin: 0 0 4px; }
+  .meta { font-size: 12px; color: #888; margin-bottom: 20px; font-family: sans-serif; }
+  .scale-note { color: #8B6914; font-style: italic; }
+  h2   { font-size: 14px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.08em;
+         color: #3D5A3E; border-bottom: 2px solid #3D5A3E; padding-bottom: 3px;
+         margin: 20px 0 10px; font-family: sans-serif; }
+  table { border-collapse: collapse; width: 100%; margin-bottom: 8px; }
+  td   { padding: 3px 6px; vertical-align: top; font-size: 13px; }
+  .qty-col  { width: 48px; text-align: right; font-weight: bold; color: #3D5A3E; white-space: nowrap; }
+  .unit-col { width: 60px; color: #6B5B45; white-space: nowrap; padding-left: 6px; }
+  ol   { padding-left: 20px; }
+  li   { margin-bottom: 6px; line-height: 1.5; }
+  .story { background: #F5F0E8; border-left: 3px solid #C4A35A; padding: 10px 14px;
+           margin-top: 16px; font-size: 12px; line-height: 1.6; color: #5A4A35; border-radius: 4px; }
+  @media print { body { margin: 12px; } }
+</style>
+</head>
+<body>
+  <h1>${r.name}</h1>
+  <div class="meta">Base: ${baseServings} servings${scaleNote} · Senior Family Cookbook</div>
+  ${storyBlock}
+  <h2>Ingredients</h2>
+  <table>${ingRows}</table>
+  <h2>Steps</h2>
+  <ol>${stepsList}</ol>
+  ${nutriBlock}
+</body>
+</html>`;
+
+  const win = window.open('', '_blank');
+  win.document.write(html);
+  win.document.close();
+  win.focus();
+  setTimeout(() => win.print(), 400);
+}
+
 function registerSW() {
   if (!('serviceWorker' in navigator)) return;
 
@@ -223,6 +298,7 @@ btnRestore.addEventListener('click', () => {
 });
 
 btnBack.addEventListener('click', goHome);
+document.getElementById('btn-print').addEventListener('click', printRecipe);
 
 // ---- Recipe Screen ----
 function openRecipe(recipe) {
