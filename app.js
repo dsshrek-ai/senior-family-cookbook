@@ -299,6 +299,8 @@ btnRestore.addEventListener('click', () => {
 
 btnBack.addEventListener('click', goHome);
 document.getElementById('btn-print').addEventListener('click', printRecipe);
+document.getElementById('btn-share-recipe').addEventListener('click', shareRecipe);
+document.getElementById('btn-share-app').addEventListener('click', shareApp);
 
 // ---- Recipe Screen ----
 function openRecipe(recipe) {
@@ -464,6 +466,85 @@ function applyScale() {
     const span  = el.querySelector('.item-text');
     span.innerHTML = buildIngText(ing, scaleFactor);
   });
+}
+
+// ---- Share ----
+async function shareApp() {
+  const data = {
+    title: 'Senior Family Cookbook',
+    text: 'Check out our family cookbook — all our favorite recipes in one place!',
+    url: 'https://dsshrek-ai.github.io/senior-family-cookbook'
+  };
+  if (navigator.share) {
+    try { await navigator.share(data); } catch(e) { if (e.name !== 'AbortError') copyToClipboard(data.url, 'App link copied!'); }
+  } else {
+    copyToClipboard(data.url, 'App link copied!');
+  }
+}
+
+async function shareRecipe() {
+  if (!currentRecipe) return;
+  const r  = currentRecipe;
+  const sf = scaleFactor;
+  const serving = parseFloat(document.getElementById('servings-input')?.value) || baseServings;
+
+  let text = `🍽️ ${r.name}\n`;
+  if (r.tags) text += `${r.tags}\n`;
+  text += `Serves: ${serving}\n\n`;
+
+  text += `INGREDIENTS\n`;
+  (r.ingredients || []).forEach(ing => {
+    let line = '';
+    if (ing.quantity !== '' && ing.quantity !== null && ing.quantity !== undefined) {
+      const raw = parseFloat(ing.quantity);
+      if (!isNaN(raw)) line += formatQty(raw * sf) + ' ';
+    }
+    if (ing.unit) line += ing.unit + ' ';
+    line += ing.ingredient || '';
+    if (ing.notes) line += ` (${ing.notes})`;
+    text += `• ${line.trim()}\n`;
+  });
+
+  text += `\nSTEPS\n`;
+  (r.steps || []).forEach((step, i) => {
+    text += `${i + 1}. ${step}\n`;
+  });
+
+  if (r.story && r.story.trim()) text += `\nAbout: ${r.story}\n`;
+
+  text += `\nFrom the Senior Family Cookbook: https://dsshrek-ai.github.io/senior-family-cookbook`;
+
+  const shareData = { title: r.name, text };
+  if (navigator.share) {
+    try { await navigator.share(shareData); } catch(e) { if (e.name !== 'AbortError') copyToClipboard(text, 'Recipe copied!'); }
+  } else {
+    copyToClipboard(text, 'Recipe copied!');
+  }
+}
+
+function copyToClipboard(text, msg) {
+  navigator.clipboard.writeText(text).then(() => {
+    showToast(msg);
+  }).catch(() => {
+    showToast('Could not copy — try long-pressing to copy.');
+  });
+}
+
+function showToast(msg) {
+  const existing = document.getElementById('share-toast');
+  if (existing) existing.remove();
+  const toast = document.createElement('div');
+  toast.id = 'share-toast';
+  toast.textContent = msg;
+  toast.style.cssText = `
+    position:fixed; bottom:calc(24px + var(--safe-bottom)); left:50%; transform:translateX(-50%);
+    background:#2A3E2B; color:#fff; padding:10px 20px; border-radius:24px;
+    font-size:14px; font-family:var(--font-body); z-index:9999;
+    box-shadow:0 4px 16px rgba(0,0,0,0.25); white-space:nowrap;
+    animation: fadeInUp 0.2s ease;
+  `;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 2500);
 }
 
 // ---- Helpers ----
