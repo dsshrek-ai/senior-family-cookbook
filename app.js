@@ -193,13 +193,18 @@ async function fetchFromWeb() {
 // ---- Populate Home UI ----
 function populateUI() {
   if (!allData) return;
+  rebuildCategoryFilter(allData.recipes);
+  populateRecipeList('all');
+}
 
-  // Build tag list
+function rebuildCategoryFilter(recipes) {
   const tagSet = new Set();
-  allData.recipes.forEach(r => {
-    if (r.tags) r.tags.split(',').forEach(t => tagSet.add(t.trim()));
+  recipes.forEach(r => {
+    if (r.tags) r.tags.split(',').forEach(t => {
+      const trimmed = t.trim();
+      if (trimmed && trimmed.toLowerCase() !== 'nourish forward') tagSet.add(trimmed);
+    });
   });
-
   tagSelect.innerHTML = '<option value="all">— Select Category —</option>';
   [...tagSet].sort().forEach(tag => {
     const opt = document.createElement('option');
@@ -207,8 +212,6 @@ function populateUI() {
     opt.textContent = tag;
     tagSelect.appendChild(opt);
   });
-
-  populateRecipeList('all');
 }
 
 function populateRecipeList(tag, search) {
@@ -269,8 +272,10 @@ btnClearSearch.addEventListener('click', () => {
   searchInput.value = '';
   btnClearSearch.classList.add('hidden');
   document.getElementById('btn-nourish').classList.remove('active');
+  rebuildCategoryFilter(allData.recipes);
+  tagSelect.value = 'all';
   searchInput.focus();
-  populateRecipeList(tagSelect.value, '');
+  populateRecipeList('all', '');
 });
 
 recipeSelect.addEventListener('change', () => {
@@ -293,10 +298,16 @@ document.getElementById('btn-nourish').addEventListener('click', () => {
   if (active) {
     searchInput.value = 'Nourish Forward';
     btnClearSearch.classList.remove('hidden');
+    const nourishRecipes = allData.recipes.filter(r =>
+      r.tags && r.tags.toLowerCase().includes('nourish forward')
+    );
+    rebuildCategoryFilter(nourishRecipes);
   } else {
     searchInput.value = '';
     btnClearSearch.classList.add('hidden');
+    rebuildCategoryFilter(allData.recipes);
   }
+  tagSelect.value = 'all';
   populateRecipeList('all', searchInput.value);
 });
 
