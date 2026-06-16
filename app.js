@@ -14,7 +14,6 @@ let scaleFactor    = 1;
 let baseServings   = 1;
 let checkedIng     = new Set();
 let checkedSteps   = new Set();
-let nourishActive  = false;
 
 // ---- DOM ----
 const screenHome    = document.getElementById('screen-home');
@@ -227,13 +226,6 @@ function populateRecipeList(tag, search) {
     );
   }
 
-  // Apply Nourish Forward as an additional filter
-  if (nourishActive) {
-    recipes = recipes.filter(r =>
-      r.tags && r.tags.split(',').map(t => t.trim()).includes('Nourish Forward')
-    );
-  }
-
   // Then filter by search term (instring across name, tags, ingredients)
   if (term) {
     recipes = recipes.filter(r => {
@@ -267,12 +259,16 @@ tagSelect.addEventListener('change', () => {
 searchInput.addEventListener('input', () => {
   const hasText = searchInput.value.length > 0;
   btnClearSearch.classList.toggle('hidden', !hasText);
+  if (searchInput.value !== 'Nourish Forward') {
+    document.getElementById('btn-nourish').classList.remove('active');
+  }
   populateRecipeList(tagSelect.value === '— Select Category —' ? 'all' : tagSelect.value, searchInput.value);
 });
 
 btnClearSearch.addEventListener('click', () => {
   searchInput.value = '';
   btnClearSearch.classList.add('hidden');
+  document.getElementById('btn-nourish').classList.remove('active');
   searchInput.focus();
   populateRecipeList(tagSelect.value, '');
 });
@@ -292,8 +288,16 @@ btnLoad.addEventListener('click', () => {
 btnRefresh.addEventListener('click', fetchFromWeb);
 
 document.getElementById('btn-nourish').addEventListener('click', () => {
-  nourishActive = !nourishActive;
-  document.getElementById('btn-nourish').classList.toggle('active', nourishActive);
+  const btn = document.getElementById('btn-nourish');
+  if (searchInput.value === 'Nourish Forward') {
+    searchInput.value = '';
+    btnClearSearch.classList.add('hidden');
+    btn.classList.remove('active');
+  } else {
+    searchInput.value = 'Nourish Forward';
+    btnClearSearch.classList.remove('hidden');
+    btn.classList.add('active');
+  }
   populateRecipeList(tagSelect.value, searchInput.value);
 });
 
