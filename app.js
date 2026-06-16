@@ -14,6 +14,7 @@ let scaleFactor    = 1;
 let baseServings   = 1;
 let checkedIng     = new Set();
 let checkedSteps   = new Set();
+let nourishActive  = false;
 
 // ---- DOM ----
 const screenHome    = document.getElementById('screen-home');
@@ -226,6 +227,13 @@ function populateRecipeList(tag, search) {
     );
   }
 
+  // Apply Nourish Forward as an additional filter
+  if (nourishActive) {
+    recipes = recipes.filter(r =>
+      r.tags && r.tags.split(',').map(t => t.trim()).includes('Nourish Forward')
+    );
+  }
+
   // Then filter by search term (instring across name, tags, ingredients)
   if (term) {
     recipes = recipes.filter(r => {
@@ -253,7 +261,6 @@ function populateRecipeList(tag, search) {
 
 // ---- Events: Home ----
 tagSelect.addEventListener('change', () => {
-  document.getElementById('btn-nourish').classList.remove('active');
   populateRecipeList(tagSelect.value, searchInput.value);
 });
 
@@ -285,14 +292,9 @@ btnLoad.addEventListener('click', () => {
 btnRefresh.addEventListener('click', fetchFromWeb);
 
 document.getElementById('btn-nourish').addEventListener('click', () => {
-  const btn = document.getElementById('btn-nourish');
-  const active = btn.classList.toggle('active');
-  if (active) {
-    tagSelect.value = 'all';
-    populateRecipeList('Nourish Forward', searchInput.value);
-  } else {
-    populateRecipeList(tagSelect.value, searchInput.value);
-  }
+  nourishActive = !nourishActive;
+  document.getElementById('btn-nourish').classList.toggle('active', nourishActive);
+  populateRecipeList(tagSelect.value, searchInput.value);
 });
 
 btnRestore.addEventListener('click', () => {
