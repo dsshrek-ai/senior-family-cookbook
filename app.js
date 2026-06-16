@@ -85,25 +85,51 @@ function printRecipe() {
   const nutriBlock = r.nutrition ? `<div class="story"><strong>Nutrition:</strong><br>${r.nutrition}</div>` : '';
   const scaleNote  = sf !== 1 ? ` <span class="scale-note">(scaled to ${scaled} servings)</span>` : '';
 
-  const content = `
-    <h1>${r.name}</h1>
-    <div class="pf-meta">Base: ${baseServings} servings${scaleNote} · Senior Family Cookbook</div>
-    ${storyBlock}
-    <h2>Ingredients</h2>
-    <table>${ingRows}</table>
-    <h2>Steps</h2>
-    <ol>${stepsList}</ol>
-    ${nutriBlock}
-  `;
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>${r.name}</title>
+<style>
+  body { font-family: Georgia, serif; font-size: 13px; margin: 24px 32px; color: #2c2c2c; max-width: 700px; }
+  h1   { font-size: 24px; color: #3D5A3E; margin: 0 0 4px; }
+  .meta { font-size: 12px; color: #888; margin-bottom: 20px; font-family: sans-serif; }
+  .scale-note { color: #8B6914; font-style: italic; }
+  h2   { font-size: 14px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.08em;
+         color: #3D5A3E; border-bottom: 2px solid #3D5A3E; padding-bottom: 3px;
+         margin: 20px 0 10px; font-family: sans-serif; }
+  table { border-collapse: collapse; width: 100%; margin-bottom: 8px; }
+  td   { padding: 3px 6px; vertical-align: top; font-size: 13px; }
+  .qty-col  { width: 48px; text-align: right; font-weight: bold; color: #3D5A3E; white-space: nowrap; }
+  .unit-col { width: 60px; color: #6B5B45; white-space: nowrap; padding-left: 6px; }
+  ol   { padding-left: 20px; }
+  li   { margin-bottom: 6px; line-height: 1.5; }
+  .story { background: #F5F0E8; border-left: 3px solid #C4A35A; padding: 10px 14px;
+           margin-top: 16px; font-size: 12px; line-height: 1.6; color: #5A4A35; border-radius: 4px; }
+  .close-btn { display: block; margin: 24px auto 0; padding: 10px 24px; background: #3D5A3E;
+               color: #fff; border: none; border-radius: 8px; font-size: 15px; cursor: pointer; }
+  @media print { .close-btn { display: none; } }
+</style>
+</head>
+<body>
+  <h1>${r.name}</h1>
+  <div class="meta">Base: ${baseServings} servings${scaleNote} · Senior Family Cookbook</div>
+  ${storyBlock}
+  <h2>Ingredients</h2>
+  <table>${ingRows}</table>
+  <h2>Steps</h2>
+  <ol>${stepsList}</ol>
+  ${nutriBlock}
+  <button class="close-btn" onclick="window.close()">← Back to Cookbook</button>
+  <script>window.addEventListener('afterprint', () => window.close());<\/script>
+</body>
+</html>`;
 
-  let printDiv = document.getElementById('print-frame');
-  if (printDiv) printDiv.remove();
-  printDiv = document.createElement('div');
-  printDiv.id = 'print-frame';
-  printDiv.innerHTML = content;
-  document.body.appendChild(printDiv);
-  window.addEventListener('afterprint', () => printDiv.remove(), { once: true });
-  window.print();
+  const win = window.open('', '_blank');
+  win.document.write(html);
+  win.document.close();
+  win.focus();
+  setTimeout(() => win.print(), 400);
 }
 
 function registerSW() {
