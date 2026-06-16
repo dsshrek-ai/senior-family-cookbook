@@ -120,17 +120,34 @@ function printRecipe() {
 </body>
 </html>`;
 
-  const iframe = document.createElement('iframe');
-  iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;border:none;';
-  document.body.appendChild(iframe);
-  iframe.contentDocument.write(html);
-  iframe.contentDocument.close();
-  iframe.onload = () => {
-    iframe.contentWindow.focus();
-    iframe.contentWindow.print();
-    iframe.contentWindow.addEventListener('afterprint', () => iframe.remove(), { once: true });
-    setTimeout(() => { if (document.body.contains(iframe)) iframe.remove(); }, 60000);
-  };
+  // Temporarily replace body content with print content, then restore after
+  const printDiv = document.createElement('div');
+  printDiv.id = 'print-frame';
+  printDiv.innerHTML = `
+    <h1>${r.name}</h1>
+    <div style="font-size:12px;color:#888;margin-bottom:20px;">Base: ${baseServings} servings${scaleNote} · Senior Family Cookbook</div>
+    ${storyBlock}
+    <h2>Ingredients</h2>
+    <table>${ingRows}</table>
+    <h2>Steps</h2>
+    <ol>${stepsList}</ol>
+    ${nutriBlock}
+  `;
+
+  const saved = document.body.innerHTML;
+  const savedStyle = document.body.getAttribute('style') || '';
+  document.body.innerHTML = '';
+  document.body.setAttribute('style', 'margin:24px 32px;font-family:Georgia,serif;font-size:13px;color:#2c2c2c;');
+  document.body.appendChild(printDiv);
+
+  window.addEventListener('afterprint', () => {
+    document.body.innerHTML = saved;
+    document.body.setAttribute('style', savedStyle);
+    // Re-initialize event listeners after restoring DOM
+    location.reload();
+  }, { once: true });
+
+  window.print();
 }
 
 function registerSW() {
