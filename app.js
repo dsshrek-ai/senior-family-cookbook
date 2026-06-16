@@ -106,13 +106,19 @@ function printRecipe() {
   li   { margin-bottom: 6px; line-height: 1.5; }
   .story { background: #F5F0E8; border-left: 3px solid #C4A35A; padding: 10px 14px;
            margin-top: 16px; font-size: 12px; line-height: 1.6; color: #5A4A35; border-radius: 4px; }
-  .print-tip { margin-top: 28px; padding: 12px 16px; background: #F5F0E8;
-               border-left: 3px solid #3D5A3E; font-size: 13px; color: #3D5A3E; font-family: sans-serif; }
-  @media print { .print-tip { display: none; } }
+  .toolbar { display: flex; justify-content: space-between; align-items: center;
+             margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid #ddd; }
+  .close-btn { padding: 8px 18px; background: #3D5A3E; color: #fff; border: none;
+               border-radius: 8px; font-size: 14px; font-family: sans-serif; cursor: pointer; }
+  .print-tip { font-size: 12px; color: #888; font-family: sans-serif; max-width: 220px; text-align: right; }
+  @media print { .toolbar { display: none; } }
 </style>
 </head>
 <body>
-  <div class="print-tip">📱 To print on iPhone: tap the <strong>Share</strong> button (box with arrow) at the bottom of Safari, then tap <strong>Print</strong>. When done, tap <strong>Done</strong> to close this page.</div>
+  <div class="toolbar">
+    <button class="close-btn" onclick="window.close()">← Back to Cookbook</button>
+    <span class="print-tip">Tap Share → Print to print this recipe</span>
+  </div>
   <h1>${r.name}</h1>
   <div class="meta">Base: ${baseServings} servings${scaleNote} · Senior Family Cookbook</div>
   ${storyBlock}
