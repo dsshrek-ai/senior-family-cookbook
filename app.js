@@ -56,6 +56,7 @@ async function init() {
 // ---- Print Recipe ----
 function printRecipe() {
   if (!currentRecipe) return;
+  showToast('Opening print…');
   const r       = currentRecipe;
   const serving = parseFloat(document.getElementById('servings-input')?.value) || baseServings;
   const sf      = serving / baseServings;
