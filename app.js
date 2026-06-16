@@ -259,12 +259,16 @@ tagSelect.addEventListener('change', () => {
 searchInput.addEventListener('input', () => {
   const hasText = searchInput.value.length > 0;
   btnClearSearch.classList.toggle('hidden', !hasText);
+  if (searchInput.value !== 'Nourish Forward') {
+    document.getElementById('btn-nourish').classList.remove('active');
+  }
   populateRecipeList(tagSelect.value === '— Select Category —' ? 'all' : tagSelect.value, searchInput.value);
 });
 
 btnClearSearch.addEventListener('click', () => {
   searchInput.value = '';
   btnClearSearch.classList.add('hidden');
+  document.getElementById('btn-nourish').classList.remove('active');
   searchInput.focus();
   populateRecipeList(tagSelect.value, '');
 });
@@ -287,11 +291,13 @@ document.getElementById('btn-nourish').addEventListener('click', () => {
   const btn = document.getElementById('btn-nourish');
   const active = btn.classList.toggle('active');
   if (active) {
-    tagSelect.value = 'Nourish Forward';
+    searchInput.value = 'Nourish Forward';
+    btnClearSearch.classList.remove('hidden');
   } else {
-    tagSelect.value = 'all';
+    searchInput.value = '';
+    btnClearSearch.classList.add('hidden');
   }
-  populateRecipeList(tagSelect.value, searchInput.value);
+  populateRecipeList('all', searchInput.value);
 });
 
 btnRestore.addEventListener('click', () => {
