@@ -106,9 +106,6 @@ function printRecipe() {
   li   { margin-bottom: 6px; line-height: 1.5; }
   .story { background: #F5F0E8; border-left: 3px solid #C4A35A; padding: 10px 14px;
            margin-top: 16px; font-size: 12px; line-height: 1.6; color: #5A4A35; border-radius: 4px; }
-  .close-btn { display: block; margin: 24px auto 0; padding: 10px 24px; background: #3D5A3E;
-               color: #fff; border: none; border-radius: 8px; font-size: 15px; cursor: pointer; }
-  @media print { .close-btn { display: none; } }
 </style>
 </head>
 <body>
@@ -120,16 +117,20 @@ function printRecipe() {
   <h2>Steps</h2>
   <ol>${stepsList}</ol>
   ${nutriBlock}
-  <button class="close-btn" onclick="window.close()">← Back to Cookbook</button>
-  <script>window.addEventListener('afterprint', () => window.close());<\/script>
 </body>
 </html>`;
 
-  const win = window.open('', '_blank');
-  win.document.write(html);
-  win.document.close();
-  win.focus();
-  setTimeout(() => win.print(), 400);
+  const iframe = document.createElement('iframe');
+  iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;border:none;';
+  document.body.appendChild(iframe);
+  iframe.contentDocument.write(html);
+  iframe.contentDocument.close();
+  iframe.onload = () => {
+    iframe.contentWindow.focus();
+    iframe.contentWindow.print();
+    iframe.contentWindow.addEventListener('afterprint', () => iframe.remove(), { once: true });
+    setTimeout(() => { if (document.body.contains(iframe)) iframe.remove(); }, 60000);
+  };
 }
 
 function registerSW() {
