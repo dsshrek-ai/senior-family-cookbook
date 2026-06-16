@@ -56,7 +56,6 @@ async function init() {
 // ---- Print Recipe ----
 function printRecipe() {
   if (!currentRecipe) return;
-  showToast('Opening print…');
   const r       = currentRecipe;
   const serving = parseFloat(document.getElementById('servings-input')?.value) || baseServings;
   const sf      = serving / baseServings;
@@ -107,9 +106,13 @@ function printRecipe() {
   li   { margin-bottom: 6px; line-height: 1.5; }
   .story { background: #F5F0E8; border-left: 3px solid #C4A35A; padding: 10px 14px;
            margin-top: 16px; font-size: 12px; line-height: 1.6; color: #5A4A35; border-radius: 4px; }
+  .print-tip { margin-top: 28px; padding: 12px 16px; background: #F5F0E8;
+               border-left: 3px solid #3D5A3E; font-size: 13px; color: #3D5A3E; font-family: sans-serif; }
+  @media print { .print-tip { display: none; } }
 </style>
 </head>
 <body>
+  <div class="print-tip">📱 To print on iPhone: tap the <strong>Share</strong> button (box with arrow) at the bottom of Safari, then tap <strong>Print</strong>. When done, tap <strong>Done</strong> to close this page.</div>
   <h1>${r.name}</h1>
   <div class="meta">Base: ${baseServings} servings${scaleNote} · Senior Family Cookbook</div>
   ${storyBlock}
@@ -121,34 +124,9 @@ function printRecipe() {
 </body>
 </html>`;
 
-  // Temporarily replace body content with print content, then restore after
-  const printDiv = document.createElement('div');
-  printDiv.id = 'print-frame';
-  printDiv.innerHTML = `
-    <h1>${r.name}</h1>
-    <div style="font-size:12px;color:#888;margin-bottom:20px;">Base: ${baseServings} servings${scaleNote} · Senior Family Cookbook</div>
-    ${storyBlock}
-    <h2>Ingredients</h2>
-    <table>${ingRows}</table>
-    <h2>Steps</h2>
-    <ol>${stepsList}</ol>
-    ${nutriBlock}
-  `;
-
-  const saved = document.body.innerHTML;
-  const savedStyle = document.body.getAttribute('style') || '';
-  document.body.innerHTML = '';
-  document.body.setAttribute('style', 'margin:24px 32px;font-family:Georgia,serif;font-size:13px;color:#2c2c2c;');
-  document.body.appendChild(printDiv);
-
-  window.addEventListener('afterprint', () => {
-    document.body.innerHTML = saved;
-    document.body.setAttribute('style', savedStyle);
-    // Re-initialize event listeners after restoring DOM
-    location.reload();
-  }, { once: true });
-
-  window.print();
+  const win = window.open('', '_blank');
+  win.document.write(html);
+  win.document.close();
 }
 
 function registerSW() {
