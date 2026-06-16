@@ -777,3 +777,59 @@ html, body {
   white-space: nowrap;
   -webkit-tap-highlight-color: transparent;
 }
+
+/* ============ QUICK FILTER ============ */
+.quick-filter-section {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.btn-quick-filter {
+  background: var(--cream-dark);
+  color: var(--green-dark);
+  border: 2px solid var(--green-light);
+  border-radius: 24px;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: var(--font-body);
+  cursor: pointer;
+  transition: background 0.18s, color 0.18s, border-color 0.18s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.btn-quick-filter.active {
+  background: var(--green);
+  color: var(--white);
+  border-color: var(--green);
+}
+
+/* ============ PRINT ============ */
+#print-frame { display: none; }
+
+@media print {
+  body > *:not(#print-frame) { display: none !important; }
+  #print-frame {
+    display: block;
+    font-family: Georgia, serif;
+    font-size: 13px;
+    margin: 24px 32px;
+    color: #2c2c2c;
+    max-width: 700px;
+  }
+  #print-frame h1   { font-size: 24px; color: #3D5A3E; margin: 0 0 4px; }
+  #print-frame .meta { font-size: 12px; color: #888; margin-bottom: 20px; font-family: sans-serif; }
+  #print-frame .scale-note { color: #8B6914; font-style: italic; }
+  #print-frame h2   { font-size: 14px; font-weight: bold; text-transform: uppercase;
+                      letter-spacing: 0.08em; color: #3D5A3E; border-bottom: 2px solid #3D5A3E;
+                      padding-bottom: 3px; margin: 20px 0 10px; font-family: sans-serif; }
+  #print-frame table { border-collapse: collapse; width: 100%; margin-bottom: 8px; }
+  #print-frame td   { padding: 3px 6px; vertical-align: top; font-size: 13px; }
+  #print-frame .qty-col  { width: 48px; text-align: right; font-weight: bold; color: #3D5A3E; white-space: nowrap; }
+  #print-frame .unit-col { width: 60px; color: #6B5B45; white-space: nowrap; padding-left: 6px; }
+  #print-frame ol   { padding-left: 20px; }
+  #print-frame li   { margin-bottom: 6px; line-height: 1.5; }
+  #print-frame .story { background: #F5F0E8; border-left: 3px solid #C4A35A; padding: 10px 14px;
+                        margin-top: 16px; font-size: 12px; line-height: 1.6; color: #5A4A35; border-radius: 4px; }
+}

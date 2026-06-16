@@ -121,11 +121,14 @@ function printRecipe() {
 </body>
 </html>`;
 
-  const win = window.open('', '_blank');
-  win.document.write(html);
-  win.document.close();
-  win.focus();
-  setTimeout(() => win.print(), 400);
+  let printDiv = document.getElementById('print-frame');
+  if (printDiv) printDiv.remove();
+  printDiv = document.createElement('div');
+  printDiv.id = 'print-frame';
+  printDiv.innerHTML = html;
+  document.body.appendChild(printDiv);
+  window.print();
+  printDiv.remove();
 }
 
 function registerSW() {
@@ -250,6 +253,7 @@ function populateRecipeList(tag, search) {
 
 // ---- Events: Home ----
 tagSelect.addEventListener('change', () => {
+  document.getElementById('btn-nourish').classList.remove('active');
   populateRecipeList(tagSelect.value, searchInput.value);
 });
 
@@ -279,6 +283,17 @@ btnLoad.addEventListener('click', () => {
 });
 
 btnRefresh.addEventListener('click', fetchFromWeb);
+
+document.getElementById('btn-nourish').addEventListener('click', () => {
+  const btn = document.getElementById('btn-nourish');
+  const active = btn.classList.toggle('active');
+  if (active) {
+    tagSelect.value = 'all';
+    populateRecipeList('Nourish Forward', searchInput.value);
+  } else {
+    populateRecipeList(tagSelect.value, searchInput.value);
+  }
+});
 
 btnRestore.addEventListener('click', () => {
   const backup = localStorage.getItem(STORAGE_BACKUP);
