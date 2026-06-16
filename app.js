@@ -127,8 +127,8 @@ function printRecipe() {
   printDiv.id = 'print-frame';
   printDiv.innerHTML = html;
   document.body.appendChild(printDiv);
+  window.addEventListener('afterprint', () => printDiv.remove(), { once: true });
   window.print();
-  printDiv.remove();
 }
 
 function registerSW() {
