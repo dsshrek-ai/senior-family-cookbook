@@ -7,6 +7,7 @@ const STORAGE_KEY      = 'sfcAllRecipes';
 const STORAGE_BACKUP   = 'sfcAllRecipesBackup';
 const STORAGE_UPDATED  = 'sfcLastUpdated';
 const STORAGE_FAVS     = 'sfcFavorites';
+const STORAGE_FAV_SCALES = 'sfcFavScales';
 
 // ---- State ----
 let allData        = null;   // { recipeList, recipes }
@@ -17,6 +18,7 @@ let checkedIng     = new Set();
 let checkedSteps   = new Set();
 let favorites      = new Set(JSON.parse(localStorage.getItem(STORAGE_FAVS) || '[]'));
 let favoritesOnly  = false;
+let favScales      = JSON.parse(localStorage.getItem(STORAGE_FAV_SCALES) || '{}');
 
 // ---- DOM ----
 const screenHome    = document.getElementById('screen-home');
@@ -269,6 +271,180 @@ function printAllFavorites() {
   win.document.close();
 }
 
+// ---- Unit Conversion ----
+const UNIT_SYNONYMS = {
+  'tsp': 'tsp', 'teaspoon': 'tsp', 'teaspoons': 'tsp', 't': 'tsp',
+  'tbsp': 'tbsp', 'tablespoon': 'tbsp', 'tablespoons': 'tbsp', 'tbs': 'tbsp', 'tbl': 'tbsp', 'T': 'tbsp',
+  'fl oz': 'fl oz', 'fluid oz': 'fl oz', 'fluid ounce': 'fl oz', 'fluid ounces': 'fl oz',
+  'cup': 'cup', 'cups': 'cup', 'c': 'cup',
+  'pint': 'pint', 'pints': 'pint', 'pt': 'pint',
+  'quart': 'quart', 'quarts': 'quart', 'qt': 'quart',
+  'gallon': 'gallon', 'gallons': 'gallon', 'gal': 'gallon',
+  'oz': 'oz', 'ounce': 'oz', 'ounces': 'oz',
+  'lb': 'lb', 'lbs': 'lb', 'pound': 'lb', 'pounds': 'lb',
+};
+const VOL_TO_TSP = { 'tsp': 1, 'tbsp': 3, 'fl oz': 6, 'cup': 48, 'pint': 96, 'quart': 192, 'gallon': 768 };
+const WT_TO_OZ   = { 'oz': 1, 'lb': 16 };
+const OZ_TO_TSP  = 6; // pint=pound bridge: 1 pint(96 tsp) ≈ 1 lb(16 oz) → 1 oz ≈ 6 tsp
+
+function normalizeUnit(unit) {
+  const u = (unit || '').trim();
+  return UNIT_SYNONYMS[u] || UNIT_SYNONYMS[u.toLowerCase()] || u.toLowerCase();
+}
+
+function tspToReadable(tsp) {
+  if (tsp >= 192) return { qty: tsp / 192, unit: 'quart' };
+  if (tsp >= 48)  return { qty: tsp / 48,  unit: 'cup' };
+  if (tsp >= 3)   return { qty: tsp / 3,   unit: 'tbsp' };
+  return { qty: tsp, unit: 'tsp' };
+}
+
+function ozToReadable(oz) {
+  if (oz >= 16) return { qty: oz / 16, unit: 'lb' };
+  return { qty: oz, unit: 'oz' };
+}
+
+function combineIngredients(recipes) {
+  const groups = {};
+
+  recipes.forEach(r => {
+    const storedServings = favScales[r.name] || r.baseServings || 1;
+    const sf = storedServings / (r.baseServings || 1);
+
+    (r.ingredients || []).forEach(ing => {
+      const rawName = (ing.ingredient || '').trim();
+      if (!rawName) return;
+      const key = rawName.toLowerCase();
+      if (!groups[key]) groups[key] = { name: rawName, entries: [] };
+
+      const rawQty = parseFloat(ing.quantity);
+      const unit   = normalizeUnit(ing.unit);
+      groups[key].entries.push({
+        qty:   isNaN(rawQty) || ing.quantity === '' || ing.quantity === null ? null : rawQty * sf,
+        unit,
+        notes: ing.notes || ''
+      });
+    });
+  });
+
+  const result = [];
+
+  Object.values(groups).forEach(g => {
+    const withQty    = g.entries.filter(e => e.qty !== null);
+    const withoutQty = g.entries.filter(e => e.qty === null);
+
+    if (withQty.length === 0) {
+      result.push({ name: g.name, display: '', unit: withoutQty[0]?.unit || '', approx: false });
+      return;
+    }
+
+    // Group entries by unit type
+    const volEntries   = withQty.filter(e => VOL_TO_TSP[e.unit] !== undefined);
+    const wtEntries    = withQty.filter(e => WT_TO_OZ[e.unit]   !== undefined);
+    const otherEntries = withQty.filter(e => !VOL_TO_TSP[e.unit] && !WT_TO_OZ[e.unit]);
+
+    const pushResult = (qty, unit, approx) => result.push({ name: g.name, qty, unit, approx });
+
+    // Combine volume entries
+    if (volEntries.length > 0 && wtEntries.length === 0 && otherEntries.length === 0) {
+      const totalTsp = volEntries.reduce((s, e) => s + e.qty * VOL_TO_TSP[e.unit], 0);
+      const { qty, unit } = tspToReadable(totalTsp);
+      pushResult(qty, unit, false);
+
+    // Combine weight entries
+    } else if (wtEntries.length > 0 && volEntries.length === 0 && otherEntries.length === 0) {
+      const totalOz = wtEntries.reduce((s, e) => s + e.qty * WT_TO_OZ[e.unit], 0);
+      const { qty, unit } = ozToReadable(totalOz);
+      pushResult(qty, unit, false);
+
+    // Mixed volume + weight — use pint=pound bridge
+    } else if ((volEntries.length > 0 || wtEntries.length > 0) && otherEntries.length === 0) {
+      const totalTsp = volEntries.reduce((s, e) => s + e.qty * VOL_TO_TSP[e.unit], 0)
+                     + wtEntries.reduce((s, e)  => s + e.qty * WT_TO_OZ[e.unit] * OZ_TO_TSP, 0);
+      const { qty, unit } = tspToReadable(totalTsp);
+      pushResult(qty, unit, true); // ~ approximate
+
+    // Other units — group by unit and sum within each
+    } else {
+      const byUnit = {};
+      withQty.forEach(e => {
+        byUnit[e.unit] = (byUnit[e.unit] || 0) + e.qty;
+      });
+      Object.entries(byUnit).forEach(([unit, qty]) => pushResult(qty, unit, false));
+    }
+  });
+
+  return result.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function printCombinedShoppingList() {
+  if (favorites.size === 0) { showToast('No favorites saved'); return; }
+
+  const favRecipes = [...favorites]
+    .map(name => allData.recipes.find(r => r.name === name))
+    .filter(Boolean)
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  const combined = combineIngredients(favRecipes);
+
+  // Recipe summary for header
+  const recipeSummary = favRecipes.map(r => {
+    const servings = favScales[r.name] || r.baseServings;
+    return `${r.name} (${servings} servings)`;
+  }).join('<br>');
+
+  let rows = '';
+  combined.forEach(item => {
+    const qtyStr = item.qty !== undefined ? formatQty(Math.round(item.qty * 100) / 100) : '';
+    const approxMark = item.approx ? '<span class="approx">~</span>' : '';
+    rows += `<tr>
+      <td class="chk-col">☐</td>
+      <td class="qty-col">${approxMark}${qtyStr}</td>
+      <td class="unit-col">${item.unit || ''}</td>
+      <td class="ing-col">${item.name}</td>
+    </tr>`;
+  });
+
+  const html = `<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Combined Shopping List</title>
+<style>
+  body  { font-family: Georgia, serif; font-size: 14px; margin: 24px 32px; color: #2c2c2c; max-width: 640px; }
+  h1    { font-size: 22px; color: #3D5A3E; margin: 0 0 6px; }
+  .recipes { font-size: 12px; color: #888; margin-bottom: 20px; font-family: sans-serif; line-height: 1.6; }
+  .recipes strong { color: #3D5A3E; display: block; margin-bottom: 4px; }
+  table { border-collapse: collapse; width: 100%; }
+  tr    { border-bottom: 1px solid #eee; }
+  td    { padding: 7px 4px; vertical-align: middle; }
+  .chk-col  { width: 24px; font-size: 18px; color: #aaa; }
+  .qty-col  { width: 52px; text-align: right; font-weight: bold; color: #3D5A3E; white-space: nowrap; padding-right: 4px; }
+  .unit-col { width: 56px; color: #6B5B45; white-space: nowrap; padding-right: 8px; }
+  .ing-col  { font-size: 14px; }
+  .approx   { color: #8B6914; font-style: italic; margin-right: 1px; }
+  .note-row td { font-size: 11px; color: #aaa; padding: 2px 4px 6px 28px; font-style: italic; border: none; }
+  .toolbar  { display: flex; justify-content: space-between; align-items: center;
+              margin-bottom: 20px; padding-bottom: 14px; border-bottom: 2px solid #3D5A3E; }
+  .close-btn { padding: 8px 18px; background: #3D5A3E; color: #fff; border: none;
+               border-radius: 8px; font-size: 14px; font-family: sans-serif; cursor: pointer; }
+  .print-tip { font-size: 12px; color: #888; font-family: sans-serif; }
+  .approx-note { font-size: 11px; color: #8B6914; margin-top: 16px; font-family: sans-serif; }
+  @media print { .toolbar { display: none; } }
+</style>
+</head><body>
+  <div class="toolbar">
+    <button class="close-btn" onclick="window.close()">← Back to Cookbook</button>
+    <span class="print-tip">Tap Share → Print</span>
+  </div>
+  <h1>Combined Shopping List</h1>
+  <div class="recipes"><strong>Recipes included:</strong>${recipeSummary}</div>
+  <table>${rows}</table>
+  <p class="approx-note">~ Quantity is approximate (volume + weight combined using pint = pound)</p>
+</body></html>`;
+
+  const win = window.open('', '_blank');
+  win.document.write(html);
+  win.document.close();
+}
+
 function registerSW() {
   if (!('serviceWorker' in navigator)) return;
 
@@ -478,6 +654,7 @@ document.getElementById('btn-share-recipe').addEventListener('click', shareRecip
 document.getElementById('btn-share-app').addEventListener('click', shareApp);
 document.getElementById('btn-favorite').addEventListener('click', toggleFavorite);
 document.getElementById('btn-print-favs').addEventListener('click', printAllFavorites);
+document.getElementById('btn-combined-shopping').addEventListener('click', printCombinedShoppingList);
 
 document.getElementById('btn-favs').addEventListener('click', () => {
   favoritesOnly = !favoritesOnly;
@@ -487,7 +664,9 @@ document.getElementById('btn-favs').addEventListener('click', () => {
 
 document.getElementById('btn-clear-favs').addEventListener('click', () => {
   favorites.clear();
+  favScales = {};
   localStorage.setItem(STORAGE_FAVS, '[]');
+  localStorage.setItem(STORAGE_FAV_SCALES, '{}');
   favoritesOnly = false;
   document.getElementById('btn-favs').classList.remove('active');
   updateClearFavsVisibility();
@@ -547,6 +726,9 @@ function renderRecipe() {
       <button class="btn-scale" id="btn-scale">Go</button>
       <span class="scale-factor" id="scale-label">(1×)</span>
     </div>
+  </div>
+  <div id="saved-serving-row" class="saved-serving-row hidden">
+    🛒 Shopping list: <strong id="saved-serving-val"></strong> servings &nbsp;·&nbsp; <em>tap Go to update</em>
   </div>`;
   html += `</div>`; // end hero
 
@@ -660,6 +842,14 @@ function applyScale() {
     const span  = el.querySelector('.item-text');
     span.innerHTML = buildIngText(ing, scaleFactor);
   });
+
+  // Save serving size for shopping list if this recipe is a favorite
+  if (currentRecipe && favorites.has(currentRecipe.name)) {
+    favScales[currentRecipe.name] = desired;
+    localStorage.setItem(STORAGE_FAV_SCALES, JSON.stringify(favScales));
+    updateSavedServingLabel();
+    showToast(`Shopping list updated to ${desired} servings`);
+  }
 }
 
 // ---- Favorites ----
@@ -668,12 +858,16 @@ function toggleFavorite() {
   const name = currentRecipe.name;
   if (favorites.has(name)) {
     favorites.delete(name);
+    delete favScales[name];
     showToast('Removed from favorites');
   } else {
     favorites.add(name);
+    const serving = parseFloat(document.getElementById('servings-input')?.value) || baseServings;
+    favScales[name] = serving;
     showToast('Added to favorites ♥');
   }
   localStorage.setItem(STORAGE_FAVS, JSON.stringify([...favorites]));
+  localStorage.setItem(STORAGE_FAV_SCALES, JSON.stringify(favScales));
   updateHeartIcon();
   updateClearFavsVisibility();
 }
@@ -687,6 +881,20 @@ function updateHeartIcon() {
   const isFav = currentRecipe && favorites.has(currentRecipe.name);
   btn.style.color = isFav ? '#e05555' : '';
   document.getElementById('icon-heart').setAttribute('fill', isFav ? 'currentColor' : 'none');
+  updateSavedServingLabel();
+}
+
+function updateSavedServingLabel() {
+  const row = document.getElementById('saved-serving-row');
+  if (!row) return;
+  const isFav = currentRecipe && favorites.has(currentRecipe.name);
+  if (isFav) {
+    const saved = favScales[currentRecipe.name] || baseServings;
+    document.getElementById('saved-serving-val').textContent = saved;
+    row.classList.remove('hidden');
+  } else {
+    row.classList.add('hidden');
+  }
 }
 
 // ---- Share ----
