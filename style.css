@@ -805,6 +805,25 @@ html, body {
   border-color: var(--green);
 }
 
+.clear-favs-section {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.clear-favs-section.hidden { display: none; }
+
+.btn-clear-favs {
+  background: none;
+  border: none;
+  color: var(--text-light);
+  font-size: 13px;
+  font-family: var(--font-body);
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 2px 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
 /* ============ PRINT ============ */
 @media print {
   #print-frame h1  { font-size: 24px; color: #3D5A3E; margin: 0 0 4px; }

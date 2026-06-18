@@ -53,6 +53,7 @@ async function init() {
     await fetchFromWeb();
   }
   setupInstallPrompt();
+  updateClearFavsVisibility();
 }
 
 // ---- Service Worker ----
@@ -352,6 +353,16 @@ document.getElementById('btn-favs').addEventListener('click', () => {
   populateRecipeList(tagSelect.value, searchInput.value);
 });
 
+document.getElementById('btn-clear-favs').addEventListener('click', () => {
+  favorites.clear();
+  localStorage.setItem(STORAGE_FAVS, '[]');
+  favoritesOnly = false;
+  document.getElementById('btn-favs').classList.remove('active');
+  updateClearFavsVisibility();
+  populateRecipeList(tagSelect.value, searchInput.value);
+  showToast('Favorites cleared');
+});
+
 // ---- Recipe Screen ----
 function openRecipe(recipe) {
   currentRecipe  = recipe;
@@ -532,6 +543,11 @@ function toggleFavorite() {
   }
   localStorage.setItem(STORAGE_FAVS, JSON.stringify([...favorites]));
   updateHeartIcon();
+  updateClearFavsVisibility();
+}
+
+function updateClearFavsVisibility() {
+  document.getElementById('clear-favs-section').classList.toggle('hidden', favorites.size === 0);
 }
 
 function updateHeartIcon() {
