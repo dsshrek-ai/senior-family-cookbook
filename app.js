@@ -6,6 +6,7 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbzJ_eW_3TyedpTFM8ZkK7Fe
 const STORAGE_KEY      = 'sfcAllRecipes';
 const STORAGE_BACKUP   = 'sfcAllRecipesBackup';
 const STORAGE_UPDATED  = 'sfcLastUpdated';
+const STORAGE_FAVS     = 'sfcFavorites';
 
 // ---- State ----
 let allData        = null;   // { recipeList, recipes }
@@ -14,6 +15,8 @@ let scaleFactor    = 1;
 let baseServings   = 1;
 let checkedIng     = new Set();
 let checkedSteps   = new Set();
+let favorites      = new Set(JSON.parse(localStorage.getItem(STORAGE_FAVS) || '[]'));
+let favoritesOnly  = false;
 
 // ---- DOM ----
 const screenHome    = document.getElementById('screen-home');
@@ -233,6 +236,11 @@ function populateRecipeList(tag, search) {
     );
   }
 
+  // Filter to favorites only
+  if (favoritesOnly) {
+    recipes = recipes.filter(r => favorites.has(r.name));
+  }
+
   // Then filter by search term (instring across name, tags, ingredients)
   if (term) {
     recipes = recipes.filter(r => {
@@ -336,6 +344,13 @@ btnBack.addEventListener('click', goHome);
 document.getElementById('btn-print').addEventListener('click', printRecipe);
 document.getElementById('btn-share-recipe').addEventListener('click', shareRecipe);
 document.getElementById('btn-share-app').addEventListener('click', shareApp);
+document.getElementById('btn-favorite').addEventListener('click', toggleFavorite);
+
+document.getElementById('btn-favs').addEventListener('click', () => {
+  favoritesOnly = !favoritesOnly;
+  document.getElementById('btn-favs').classList.toggle('active', favoritesOnly);
+  populateRecipeList(tagSelect.value, searchInput.value);
+});
 
 // ---- Recipe Screen ----
 function openRecipe(recipe) {
@@ -346,6 +361,7 @@ function openRecipe(recipe) {
   checkedSteps   = new Set();
 
   renderRecipe();
+  updateHeartIcon();
 
   // Slide transition
   screenHome.classList.add('slide-out');
@@ -501,6 +517,28 @@ function applyScale() {
     const span  = el.querySelector('.item-text');
     span.innerHTML = buildIngText(ing, scaleFactor);
   });
+}
+
+// ---- Favorites ----
+function toggleFavorite() {
+  if (!currentRecipe) return;
+  const name = currentRecipe.name;
+  if (favorites.has(name)) {
+    favorites.delete(name);
+    showToast('Removed from favorites');
+  } else {
+    favorites.add(name);
+    showToast('Added to favorites ♥');
+  }
+  localStorage.setItem(STORAGE_FAVS, JSON.stringify([...favorites]));
+  updateHeartIcon();
+}
+
+function updateHeartIcon() {
+  const btn = document.getElementById('btn-favorite');
+  const isFav = currentRecipe && favorites.has(currentRecipe.name);
+  btn.style.color = isFav ? '#e05555' : '';
+  document.getElementById('icon-heart').setAttribute('fill', isFav ? 'currentColor' : 'none');
 }
 
 // ---- Share ----
