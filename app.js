@@ -8,6 +8,7 @@ const STORAGE_BACKUP   = 'sfcAllRecipesBackup';
 const STORAGE_UPDATED  = 'sfcLastUpdated';
 const STORAGE_FAVS     = 'sfcFavorites';
 const STORAGE_FAV_SCALES = 'sfcFavScales';
+const STORAGE_EXCL     = 'sfcExcluded';
 
 // ---- State ----
 let allData        = null;   // { recipeList, recipes }
@@ -19,6 +20,7 @@ let checkedSteps   = new Set();
 let favorites      = new Set(JSON.parse(localStorage.getItem(STORAGE_FAVS) || '[]'));
 let favoritesOnly  = false;
 let favScales      = JSON.parse(localStorage.getItem(STORAGE_FAV_SCALES) || '{}');
+let excl           = JSON.parse(localStorage.getItem(STORAGE_EXCL) || '{}');
 
 // ---- DOM ----
 const screenHome    = document.getElementById('screen-home');
@@ -271,6 +273,82 @@ function printAllFavorites() {
   win.document.close();
 }
 
+// ---- Grocery Departments ----
+const DEPT_ORDER = [
+  'Produce', 'Meat & Seafood', 'Dairy & Eggs', 'Bakery & Bread',
+  'Baking', 'Dry Goods & Pasta', 'Canned & Jarred',
+  'Spices & Seasonings', 'Oils & Condiments', 'Frozen', 'Other'
+];
+const DEPT_KEYWORDS = {
+  'Produce': ['onion','garlic','tomato','pepper','carrot','celery','potato','lettuce',
+    'spinach','kale','mushroom','lemon','lime','orange','apple','banana','cucumber',
+    'zucchini','squash','corn','green bean','pea','broccoli','cauliflower','asparagus',
+    'beet','radish','scallion','shallot','chive','parsley','cilantro','basil','mint',
+    'thyme','rosemary','sage','dill','ginger','jalapeño','jalapeno','avocado',
+    'cabbage','artichoke','eggplant','fennel','leek','arugula','chard','collard',
+    'turnip','parsnip','yam','sweet potato','pumpkin','butternut','acorn','spaghetti squash',
+    'pear','peach','plum','cherry','grape','melon','watermelon','mango','papaya',
+    'pineapple','kiwi','fig','pomegranate','cranberry','blueberry','strawberry',
+    'raspberry','blackberry','rhubarb','berry','berries','fresh herb','scallion','bok choy'],
+  'Meat & Seafood': ['chicken','beef','pork','turkey','lamb','fish','salmon','tuna',
+    'shrimp','crab','lobster','sausage','bacon','ham','steak','roast','veal','duck',
+    'venison','anchovy','clam','mussel','scallop','tilapia','cod','halibut','flounder',
+    'meatball','brisket','ribs','tenderloin','sirloin','chuck','filet','fillet',
+    'prosciutto','pancetta','pepperoni','salami','chorizo','kielbasa','ground beef',
+    'ground turkey','ground pork','ground lamb','ground chicken','hot dog','bratwurst'],
+  'Dairy & Eggs': ['milk','cream','butter','cheese','yogurt','egg','sour cream',
+    'cottage cheese','ricotta','mozzarella','parmesan','cheddar','cream cheese',
+    'half-and-half','half and half','whipping cream','heavy cream','buttermilk',
+    'kefir','ghee','brie','feta','gouda','swiss','gruyere','provolone','mascarpone',
+    'colby','monterey jack','goat cheese','queso','creme fraiche'],
+  'Bakery & Bread': ['bread','roll','baguette','pita','tortilla','wrap','bun',
+    'croissant','bagel','english muffin','crumpet','naan','flatbread','lavash',
+    'sourdough','ciabatta','focaccia','challah'],
+  'Baking': ['flour','sugar','baking powder','baking soda','yeast','cocoa powder',
+    'chocolate chip','vanilla','cornstarch','corn starch','powdered sugar',
+    'confectioner','brown sugar','molasses','honey','maple syrup','shortening','lard',
+    'almond flour','bread flour','cake flour','whole wheat flour','oat flour',
+    'tapioca','arrowroot','gelatin','pectin','extract','food coloring','sprinkle',
+    'cocoa','dark chocolate','white chocolate','bittersweet','semisweet','meringue',
+    'cream of tartar','active dry','instant yeast'],
+  'Dry Goods & Pasta': ['pasta','spaghetti','penne','fettuccine','linguine','rigatoni',
+    'farfalle','orzo','lasagna','noodle','rice','oat','oatmeal','cereal','quinoa',
+    'barley','farro','bulgur','couscous','lentil','bean','chickpea','black bean',
+    'kidney bean','pinto bean','navy bean','white bean','bread crumb','panko',
+    'cracker','broth','stock','ramen','udon','soba','rice noodle','vermicelli',
+    'polenta','grits','cornmeal','millet','buckwheat','spelt','wild rice','brown rice',
+    'jasmine rice','basmati','arborio','fregola','macaroni','rotini','ziti','cavatappi'],
+  'Canned & Jarred': ['tomato sauce','tomato paste','diced tomato','crushed tomato',
+    'canned','salsa','pickle','olive','jam','jelly','peanut butter','almond butter',
+    'tahini','coconut milk','coconut cream','roasted pepper','sun-dried','artichoke heart',
+    'chili','soup','applesauce','fruit preserves','caramel sauce','hot fudge'],
+  'Spices & Seasonings': ['salt','pepper','cumin','paprika','cinnamon','oregano',
+    'coriander','turmeric','cayenne','chili powder','garlic powder','onion powder',
+    'bay leaf','nutmeg','clove','cardamom','curry','allspice','anise','caraway',
+    'celery seed','fennel seed','fenugreek','lemongrass','mace','marjoram',
+    'mustard seed','saffron','star anise','sumac','tarragon','herbes de provence',
+    'italian seasoning','old bay','cajun','creole','dried basil','dried oregano',
+    'dried thyme','dried rosemary','dried parsley','red pepper flake','chili flake',
+    'smoked paprika','seasoning','spice','za\'atar'],
+  'Oils & Condiments': ['olive oil','vegetable oil','canola oil','sesame oil',
+    'coconut oil','avocado oil','peanut oil','grapeseed oil','vinegar','balsamic',
+    'apple cider vinegar','rice vinegar','wine vinegar','soy sauce','tamari',
+    'worcestershire','hot sauce','ketchup','mustard','mayo','mayonnaise','dressing',
+    'relish','capers','fish sauce','oyster sauce','hoisin','teriyaki','sriracha',
+    'miso','cooking spray','nonstick',' oil'],
+  'Frozen': ['frozen','ice cream','sorbet','popsicle'],
+};
+
+function getDept(ingredientName) {
+  const name = ingredientName.toLowerCase();
+  for (const dept of DEPT_ORDER) {
+    if (dept === 'Other') break;
+    const keywords = DEPT_KEYWORDS[dept] || [];
+    if (keywords.some(kw => name.includes(kw))) return dept;
+  }
+  return 'Other';
+}
+
 // ---- Unit Conversion ----
 const UNIT_SYNONYMS = {
   'tsp': 'tsp', 'teaspoon': 'tsp', 'teaspoons': 'tsp', 't': 'tsp',
@@ -311,7 +389,9 @@ function combineIngredients(recipes) {
     const storedServings = favScales[r.name] || r.baseServings || 1;
     const sf = storedServings / (r.baseServings || 1);
 
-    (r.ingredients || []).forEach(ing => {
+    const exclSet = new Set(excl[r.name] || []);
+    (r.ingredients || []).forEach((ing, idx) => {
+      if (exclSet.has(idx)) return; // user checked this off
       const rawName = (ing.ingredient || '').trim();
       if (!rawName) return;
       const key = rawName.toLowerCase();
@@ -332,9 +412,10 @@ function combineIngredients(recipes) {
   Object.values(groups).forEach(g => {
     const withQty    = g.entries.filter(e => e.qty !== null);
     const withoutQty = g.entries.filter(e => e.qty === null);
+    const dept = getDept(g.name);
 
     if (withQty.length === 0) {
-      result.push({ name: g.name, display: '', unit: withoutQty[0]?.unit || '', approx: false });
+      result.push({ name: g.name, display: '', unit: withoutQty[0]?.unit || '', approx: false, dept });
       return;
     }
 
@@ -343,7 +424,7 @@ function combineIngredients(recipes) {
     const wtEntries    = withQty.filter(e => WT_TO_OZ[e.unit]   !== undefined);
     const otherEntries = withQty.filter(e => !VOL_TO_TSP[e.unit] && !WT_TO_OZ[e.unit]);
 
-    const pushResult = (qty, unit, approx) => result.push({ name: g.name, qty, unit, approx });
+    const pushResult = (qty, unit, approx) => result.push({ name: g.name, qty, unit, approx, dept });
 
     // Combine volume entries
     if (volEntries.length > 0 && wtEntries.length === 0 && otherEntries.length === 0) {
@@ -374,7 +455,10 @@ function combineIngredients(recipes) {
     }
   });
 
-  return result.sort((a, b) => a.name.localeCompare(b.name));
+  return result.sort((a, b) => {
+    const di = DEPT_ORDER.indexOf(a.dept) - DEPT_ORDER.indexOf(b.dept);
+    return di !== 0 ? di : a.name.localeCompare(b.name);
+  });
 }
 
 function printCombinedShoppingList() {
@@ -394,7 +478,12 @@ function printCombinedShoppingList() {
   }).join('<br>');
 
   let rows = '';
+  let lastDept = null;
   combined.forEach(item => {
+    if (item.dept !== lastDept) {
+      rows += `<tr class="dept-row"><td colspan="4">${item.dept}</td></tr>`;
+      lastDept = item.dept;
+    }
     const qtyStr = item.qty !== undefined ? formatQty(Math.round(item.qty * 100) / 100) : '';
     const approxMark = item.approx ? '<span class="approx">~</span>' : '';
     rows += `<tr>
@@ -426,6 +515,9 @@ function printCombinedShoppingList() {
   .close-btn { padding: 8px 18px; background: #3D5A3E; color: #fff; border: none;
                border-radius: 8px; font-size: 14px; font-family: sans-serif; cursor: pointer; }
   .print-tip { font-size: 12px; color: #888; font-family: sans-serif; }
+  .dept-row td { background: #f0f4f0; color: #3D5A3E; font-weight: bold; font-family: sans-serif;
+                 font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+                 padding: 10px 4px 3px; border-bottom: 2px solid #3D5A3E; }
   .approx-note { font-size: 11px; color: #8B6914; margin-top: 16px; font-family: sans-serif; }
   @media print { .toolbar { display: none; } }
 </style>
@@ -437,7 +529,7 @@ function printCombinedShoppingList() {
   <h1>Combined Shopping List</h1>
   <div class="recipes"><strong>Recipes included:</strong>${recipeSummary}</div>
   <table>${rows}</table>
-  <p class="approx-note">~ Quantity is approximate (volume + weight combined using pint = pound)</p>
+  <p class="approx-note">~ Quantity is approximate (volume + weight combined using pint = pound)<br>Checked-off ingredients in recipes are excluded from this list.</p>
 </body></html>`;
 
   const win = window.open('', '_blank');
@@ -679,7 +771,7 @@ function openRecipe(recipe) {
   currentRecipe  = recipe;
   baseServings   = recipe.baseServings || 4;
   scaleFactor    = 1;
-  checkedIng     = new Set();
+  checkedIng     = new Set(excl[recipe.name] || []);
   checkedSteps   = new Set();
 
   renderRecipe();
@@ -805,6 +897,13 @@ function renderRecipe() {
       if (checkedIng.has(i)) checkedIng.delete(i);
       else checkedIng.add(i);
       el.classList.toggle('checked', checkedIng.has(i));
+      // Persist so shopping list can exclude checked-off ingredients
+      if (checkedIng.size > 0) {
+        excl[currentRecipe.name] = [...checkedIng];
+      } else {
+        delete excl[currentRecipe.name];
+      }
+      localStorage.setItem(STORAGE_EXCL, JSON.stringify(excl));
     });
   });
 
