@@ -139,6 +139,136 @@ function printRecipe() {
   win.document.close();
 }
 
+function printShoppingList() {
+  if (!currentRecipe) return;
+  const r       = currentRecipe;
+  const serving = parseFloat(document.getElementById('servings-input')?.value) || baseServings;
+  const sf      = serving / baseServings;
+  const scaleNote = sf !== 1 ? ` — scaled to ${Math.round(serving * 10) / 10} servings` : ` — ${baseServings} servings`;
+
+  let rows = '';
+  (r.ingredients || []).forEach(ing => {
+    let qty = '';
+    if (ing.quantity !== '' && ing.quantity !== null && ing.quantity !== undefined) {
+      const raw = parseFloat(ing.quantity);
+      if (!isNaN(raw)) qty = formatQty(raw * sf);
+    }
+    rows += `<tr>
+      <td class="chk-col"><span class="chk">☐</span></td>
+      <td class="qty-col">${qty}</td>
+      <td class="unit-col">${ing.unit || ''}</td>
+      <td>${ing.ingredient || ''}${ing.notes ? ` <span class="note">(${ing.notes})</span>` : ''}</td>
+    </tr>`;
+  });
+
+  const html = `<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Shopping List — ${r.name}</title>
+<style>
+  body  { font-family: Georgia, serif; font-size: 14px; margin: 24px 32px; color: #2c2c2c; max-width: 600px; }
+  h1    { font-size: 20px; color: #3D5A3E; margin: 0 0 4px; }
+  .sub  { font-size: 12px; color: #888; margin-bottom: 20px; font-family: sans-serif; }
+  table { border-collapse: collapse; width: 100%; }
+  tr    { border-bottom: 1px solid #eee; }
+  td    { padding: 6px 4px; vertical-align: middle; font-size: 14px; }
+  .chk-col  { width: 24px; font-size: 18px; color: #aaa; }
+  .qty-col  { width: 44px; text-align: right; font-weight: bold; color: #3D5A3E; white-space: nowrap; }
+  .unit-col { width: 56px; color: #6B5B45; padding-left: 6px; white-space: nowrap; }
+  .note { font-size: 12px; color: #888; font-style: italic; }
+  .toolbar { display: flex; justify-content: space-between; align-items: center;
+             margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid #ddd; }
+  .close-btn { padding: 8px 18px; background: #3D5A3E; color: #fff; border: none;
+               border-radius: 8px; font-size: 14px; font-family: sans-serif; cursor: pointer; }
+  .print-tip { font-size: 12px; color: #888; font-family: sans-serif; }
+  @media print { .toolbar { display: none; } }
+</style>
+</head><body>
+  <div class="toolbar">
+    <button class="close-btn" onclick="window.close()">← Back to Cookbook</button>
+    <span class="print-tip">Tap Share → Print</span>
+  </div>
+  <h1>Shopping List — ${r.name}</h1>
+  <div class="sub">Senior Family Cookbook${scaleNote}</div>
+  <table>${rows}</table>
+</body></html>`;
+
+  const win = window.open('', '_blank');
+  win.document.write(html);
+  win.document.close();
+}
+
+function printAllFavorites() {
+  if (favorites.size === 0) { showToast('No favorites saved'); return; }
+
+  const favRecipes = [...favorites]
+    .map(name => allData.recipes.find(r => r.name === name))
+    .filter(Boolean)
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  const printStyles = `
+    body  { font-family: Georgia, serif; font-size: 13px; margin: 24px 32px; color: #2c2c2c; }
+    h1    { font-size: 22px; color: #3D5A3E; margin: 0 0 4px; }
+    .meta { font-size: 12px; color: #888; margin-bottom: 16px; font-family: sans-serif; }
+    h2    { font-size: 13px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.08em;
+            color: #3D5A3E; border-bottom: 2px solid #3D5A3E; padding-bottom: 3px; margin: 16px 0 8px; font-family: sans-serif; }
+    table { border-collapse: collapse; width: 100%; margin-bottom: 8px; }
+    td    { padding: 3px 6px; vertical-align: top; font-size: 13px; }
+    .qty-col  { width: 48px; text-align: right; font-weight: bold; color: #3D5A3E; white-space: nowrap; }
+    .unit-col { width: 60px; color: #6B5B45; white-space: nowrap; padding-left: 6px; }
+    ol    { padding-left: 20px; margin: 0; }
+    li    { margin-bottom: 5px; line-height: 1.5; }
+    .story { background: #F5F0E8; border-left: 3px solid #C4A35A; padding: 8px 12px;
+             margin-top: 12px; font-size: 12px; line-height: 1.6; color: #5A4A35; }
+    .recipe-block { page-break-after: always; padding-bottom: 24px; }
+    .recipe-block:last-child { page-break-after: avoid; }
+    .toolbar { display: flex; justify-content: space-between; align-items: center;
+               margin-bottom: 24px; padding-bottom: 14px; border-bottom: 2px solid #3D5A3E; }
+    .close-btn { padding: 8px 18px; background: #3D5A3E; color: #fff; border: none;
+                 border-radius: 8px; font-size: 14px; font-family: sans-serif; cursor: pointer; }
+    .print-tip { font-size: 12px; color: #888; font-family: sans-serif; }
+    @media print { .toolbar { display: none; } }
+  `;
+
+  let recipesHtml = '';
+  favRecipes.forEach(r => {
+    let ingRows = '';
+    (r.ingredients || []).forEach(ing => {
+      const qty = ing.quantity !== '' && ing.quantity !== null ? formatQty(parseFloat(ing.quantity) || 0) : '';
+      ingRows += `<tr>
+        <td class="qty-col">${qty}</td>
+        <td class="unit-col">${ing.unit || ''}</td>
+        <td>${ing.ingredient || ''}${ing.notes ? ` <em>(${ing.notes})</em>` : ''}</td>
+      </tr>`;
+    });
+    let stepsList = (r.steps || []).map((s, i) => `<li>${s}</li>`).join('');
+    const storyBlock = r.story ? `<div class="story"><strong>About:</strong> ${r.story}</div>` : '';
+
+    recipesHtml += `<div class="recipe-block">
+      <h1>${r.name}</h1>
+      <div class="meta">${r.baseServings} servings · Senior Family Cookbook</div>
+      ${storyBlock}
+      <h2>Ingredients</h2>
+      <table>${ingRows}</table>
+      <h2>Steps</h2>
+      <ol>${stepsList}</ol>
+    </div>`;
+  });
+
+  const html = `<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Favorite Recipes</title>
+<style>${printStyles}</style>
+</head><body>
+  <div class="toolbar">
+    <button class="close-btn" onclick="window.close()">← Back to Cookbook</button>
+    <span class="print-tip">${favRecipes.length} recipe${favRecipes.length !== 1 ? 's' : ''} · Tap Share → Print</span>
+  </div>
+  ${recipesHtml}
+</body></html>`;
+
+  const win = window.open('', '_blank');
+  win.document.write(html);
+  win.document.close();
+}
+
 function registerSW() {
   if (!('serviceWorker' in navigator)) return;
 
@@ -343,9 +473,11 @@ btnRestore.addEventListener('click', () => {
 
 btnBack.addEventListener('click', goHome);
 document.getElementById('btn-print').addEventListener('click', printRecipe);
+document.getElementById('btn-print-shopping').addEventListener('click', printShoppingList);
 document.getElementById('btn-share-recipe').addEventListener('click', shareRecipe);
 document.getElementById('btn-share-app').addEventListener('click', shareApp);
 document.getElementById('btn-favorite').addEventListener('click', toggleFavorite);
+document.getElementById('btn-print-favs').addEventListener('click', printAllFavorites);
 
 document.getElementById('btn-favs').addEventListener('click', () => {
   favoritesOnly = !favoritesOnly;

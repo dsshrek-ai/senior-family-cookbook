@@ -807,10 +807,23 @@ html, body {
 
 .clear-favs-section {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .clear-favs-section.hidden { display: none; }
+
+.btn-print-favs {
+  background: none;
+  border: none;
+  color: var(--green);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--font-body);
+  cursor: pointer;
+  padding: 2px 0;
+  -webkit-tap-highlight-color: transparent;
+}
 
 .btn-clear-favs {
   background: none;
