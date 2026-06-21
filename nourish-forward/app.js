@@ -2,7 +2,7 @@
    NOURISH FORWARD RECIPES — App Logic
    ============================================ */
 
-const API_URL = 'REPLACE_WITH_NOURISH_FORWARD_GOOGLE_APPS_SCRIPT_URL';
+const API_URL = 'https://script.google.com/macros/s/AKfycbwnKIbezeBG1V60oOo-NvXQaWk2g8RabMiuI2BGmVXGIEnASneDFOLVLwmBe-MnKtVs/exec';
 const STORAGE_KEY      = 'nfrAllRecipes';
 const STORAGE_BACKUP   = 'nfrAllRecipesBackup';
 const STORAGE_UPDATED  = 'nfrLastUpdated';
@@ -770,7 +770,6 @@ function renderRecipe() {
 
   html += `<div class="recipe-body">`;
 
-  // Ingredients
   html += `<div class="section">
     <div class="section-header">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg>
@@ -789,7 +788,6 @@ function renderRecipe() {
 
   html += `</ul></div>`;
 
-  // Steps
   html += `<div class="section">
     <div class="section-header">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
