@@ -36,7 +36,7 @@ const restoreBanner = document.getElementById('restore-banner');
 const lastUpdated   = document.getElementById('last-updated');
 const loadingOverlay = document.getElementById('loading-overlay');
 const recipeContent = document.getElementById('recipe-content');
-const searchInput    = document.getElementById('search-input');
+const searchInput   = document.getElementById('search-input');
 const btnClearSearch = document.getElementById('btn-clear-search');
 
 // ---- Init ----
@@ -82,7 +82,7 @@ function printRecipe() {
   });
 
   let stepsList = '';
-  (r.steps || []).forEach((step, i) => {
+  (r.steps || []).forEach(step => {
     stepsList += `<li>${step}</li>`;
   });
 
@@ -96,7 +96,7 @@ function printRecipe() {
 <meta charset="UTF-8">
 <title>${r.name}</title>
 <style>
-  body { font-family: Georgia, serif; font-size: 13px; margin: 24px 32px; color: #1A2E22; max-width: 700px; }
+  body { font-family: Georgia, serif; font-size: 13px; margin: 24px 32px; color: #2c2c2c; max-width: 700px; }
   h1   { font-size: 24px; color: #2C6B4F; margin: 0 0 4px; }
   .meta { font-size: 12px; color: #888; margin-bottom: 20px; font-family: sans-serif; }
   .scale-note { color: #7C5CBF; font-style: italic; }
@@ -109,7 +109,7 @@ function printRecipe() {
   .unit-col { width: 60px; color: #3A5A46; white-space: nowrap; padding-left: 6px; }
   ol   { padding-left: 20px; }
   li   { margin-bottom: 6px; line-height: 1.5; }
-  .story { background: #EBF4EE; border-left: 3px solid #A480D9; padding: 10px 14px;
+  .story { background: #F2F8F5; border-left: 3px solid #A480D9; padding: 10px 14px;
            margin-top: 16px; font-size: 12px; line-height: 1.6; color: #3A5A46; border-radius: 4px; }
   .toolbar { display: flex; justify-content: space-between; align-items: center;
              margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid #ddd; }
@@ -165,7 +165,7 @@ function printShoppingList() {
   const html = `<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><title>Shopping List — ${r.name}</title>
 <style>
-  body  { font-family: Georgia, serif; font-size: 14px; margin: 24px 32px; color: #1A2E22; max-width: 600px; }
+  body  { font-family: Georgia, serif; font-size: 14px; margin: 24px 32px; color: #2c2c2c; max-width: 600px; }
   h1    { font-size: 20px; color: #2C6B4F; margin: 0 0 4px; }
   .sub  { font-size: 12px; color: #888; margin-bottom: 20px; font-family: sans-serif; }
   table { border-collapse: collapse; width: 100%; }
@@ -206,7 +206,7 @@ function printAllFavorites() {
     .sort((a, b) => a.name.localeCompare(b.name));
 
   const printStyles = `
-    body  { font-family: Georgia, serif; font-size: 13px; margin: 24px 32px; color: #1A2E22; }
+    body  { font-family: Georgia, serif; font-size: 13px; margin: 24px 32px; color: #2c2c2c; }
     h1    { font-size: 22px; color: #2C6B4F; margin: 0 0 4px; }
     .meta { font-size: 12px; color: #888; margin-bottom: 16px; font-family: sans-serif; }
     h2    { font-size: 13px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.08em;
@@ -217,7 +217,7 @@ function printAllFavorites() {
     .unit-col { width: 60px; color: #3A5A46; white-space: nowrap; padding-left: 6px; }
     ol    { padding-left: 20px; margin: 0; }
     li    { margin-bottom: 5px; line-height: 1.5; }
-    .story { background: #EBF4EE; border-left: 3px solid #A480D9; padding: 8px 12px;
+    .story { background: #F2F8F5; border-left: 3px solid #A480D9; padding: 8px 12px;
              margin-top: 12px; font-size: 12px; line-height: 1.6; color: #3A5A46; }
     .recipe-block { page-break-after: always; padding-bottom: 24px; }
     .recipe-block:last-child { page-break-after: avoid; }
@@ -240,7 +240,7 @@ function printAllFavorites() {
         <td>${ing.ingredient || ''}${ing.notes ? ` <em>(${ing.notes})</em>` : ''}</td>
       </tr>`;
     });
-    let stepsList = (r.steps || []).map((s, i) => `<li>${s}</li>`).join('');
+    const stepsList = (r.steps || []).map(s => `<li>${s}</li>`).join('');
     const storyBlock = r.story ? `<div class="story"><strong>About:</strong> ${r.story}</div>` : '';
 
     recipesHtml += `<div class="recipe-block">
@@ -326,7 +326,7 @@ const DEPT_KEYWORDS = {
     'mustard seed','saffron','star anise','sumac','tarragon','herbes de provence',
     'italian seasoning','old bay','cajun','creole','dried basil','dried oregano',
     'dried thyme','dried rosemary','dried parsley','red pepper flake','chili flake',
-    'smoked paprika','seasoning','spice','za\'atar'],
+    'smoked paprika','seasoning','spice',"za'atar"],
   'Oils & Condiments': ['olive oil','vegetable oil','canola oil','sesame oil',
     'coconut oil','avocado oil','peanut oil','grapeseed oil','vinegar','balsamic',
     'apple cider vinegar','rice vinegar','wine vinegar','soy sauce','tamari',
@@ -385,8 +385,8 @@ function combineIngredients(recipes) {
   recipes.forEach(r => {
     const storedServings = favScales[r.name] || r.baseServings || 1;
     const sf = storedServings / (r.baseServings || 1);
-
     const exclSet = new Set(excl[r.name] || []);
+
     (r.ingredients || []).forEach((ing, idx) => {
       if (exclSet.has(idx)) return;
       const rawName = (ing.ingredient || '').trim();
@@ -437,9 +437,7 @@ function combineIngredients(recipes) {
       pushResult(qty, unit, true);
     } else {
       const byUnit = {};
-      withQty.forEach(e => {
-        byUnit[e.unit] = (byUnit[e.unit] || 0) + e.qty;
-      });
+      withQty.forEach(e => { byUnit[e.unit] = (byUnit[e.unit] || 0) + e.qty; });
       Object.entries(byUnit).forEach(([unit, qty]) => pushResult(qty, unit, false));
     }
   });
@@ -485,7 +483,7 @@ function printCombinedShoppingList() {
   const html = `<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><title>Combined Shopping List</title>
 <style>
-  body  { font-family: Georgia, serif; font-size: 14px; margin: 24px 32px; color: #1A2E22; max-width: 640px; }
+  body  { font-family: Georgia, serif; font-size: 14px; margin: 24px 32px; color: #2c2c2c; max-width: 640px; }
   h1    { font-size: 22px; color: #2C6B4F; margin: 0 0 6px; }
   .recipes { font-size: 12px; color: #888; margin-bottom: 20px; font-family: sans-serif; line-height: 1.6; }
   .recipes strong { color: #2C6B4F; display: block; margin-bottom: 4px; }
@@ -502,7 +500,7 @@ function printCombinedShoppingList() {
   .close-btn { padding: 8px 18px; background: #2C6B4F; color: #fff; border: none;
                border-radius: 8px; font-size: 14px; font-family: sans-serif; cursor: pointer; }
   .print-tip { font-size: 12px; color: #888; font-family: sans-serif; }
-  .dept-row td { background: #EBF4EE; color: #2C6B4F; font-weight: bold; font-family: sans-serif;
+  .dept-row td { background: #e8f2ec; color: #2C6B4F; font-weight: bold; font-family: sans-serif;
                  font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
                  padding: 10px 4px 3px; border-bottom: 2px solid #2C6B4F; }
   .approx-note { font-size: 11px; color: #7C5CBF; margin-top: 16px; font-family: sans-serif; }
@@ -516,7 +514,7 @@ function printCombinedShoppingList() {
   <h1>Combined Shopping List</h1>
   <div class="recipes"><strong>Recipes included:</strong>${recipeSummary}</div>
   <table>${rows}</table>
-  <p class="approx-note">~ Quantity is approximate (volume + weight combined using pint = pound)<br>Checked-off ingredients in recipes are excluded from this list.</p>
+  <p class="approx-note">~ Quantity is approximate (volume + weight combined)<br>Checked-off ingredients are excluded from this list.</p>
 </body></html>`;
 
   const win = window.open('', '_blank');
@@ -526,7 +524,6 @@ function printCombinedShoppingList() {
 
 function registerSW() {
   if (!('serviceWorker' in navigator)) return;
-
   navigator.serviceWorker.register('sw.js').then(reg => {
     reg.addEventListener('updatefound', () => {
       const newWorker = reg.installing;
@@ -534,12 +531,10 @@ function registerSW() {
         if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
           const banner = document.getElementById('update-banner');
           if (banner) banner.classList.remove('hidden');
-
           document.getElementById('btn-update').addEventListener('click', () => {
             newWorker.postMessage('skipWaiting');
             window.location.reload();
           });
-
           document.getElementById('btn-dismiss-update').addEventListener('click', () => {
             banner.classList.add('hidden');
           });
@@ -610,7 +605,6 @@ function populateRecipeList(tag, search) {
   btnLoad.disabled = true;
 
   const term = (search || '').toLowerCase().trim();
-
   let recipes = allData.recipes;
 
   if (tag !== 'all' && tag !== '') {
@@ -635,7 +629,6 @@ function populateRecipeList(tag, search) {
   }
 
   const names = recipes.map(r => r.name).sort();
-
   names.forEach(name => {
     const opt = document.createElement('option');
     opt.value = name;
@@ -755,9 +748,7 @@ function renderRecipe() {
     const tags = r.tags.split(',').map(t => t.trim()).filter(Boolean);
     if (tags.length) {
       html += `<div class="recipe-tags">`;
-      tags.forEach(tag => {
-        html += `<span class="tag-pill">${escHtml(tag)}</span>`;
-      });
+      tags.forEach(tag => { html += `<span class="tag-pill">${escHtml(tag)}</span>`; });
       html += `</div>`;
     }
   }
@@ -779,6 +770,7 @@ function renderRecipe() {
 
   html += `<div class="recipe-body">`;
 
+  // Ingredients
   html += `<div class="section">
     <div class="section-header">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg>
@@ -797,6 +789,7 @@ function renderRecipe() {
 
   html += `</ul></div>`;
 
+  // Steps
   html += `<div class="section">
     <div class="section-header">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
@@ -880,9 +873,9 @@ function applyScale() {
   label.textContent = sf === 1 ? '(1×)' : `(${sf}×)`;
 
   document.querySelectorAll('[data-ing]').forEach(el => {
-    const i     = parseInt(el.dataset.ing);
-    const ing   = currentRecipe.ingredients[i];
-    const span  = el.querySelector('.item-text');
+    const i    = parseInt(el.dataset.ing);
+    const ing  = currentRecipe.ingredients[i];
+    const span = el.querySelector('.item-text');
     span.innerHTML = buildIngText(ing, scaleFactor);
   });
 
@@ -919,7 +912,7 @@ function updateClearFavsVisibility() {
 }
 
 function updateHeartIcon() {
-  const btn = document.getElementById('btn-favorite');
+  const btn   = document.getElementById('btn-favorite');
   const isFav = currentRecipe && favorites.has(currentRecipe.name);
   btn.style.color = isFav ? '#e05555' : '';
   document.getElementById('icon-heart').setAttribute('fill', isFav ? 'currentColor' : 'none');
@@ -962,7 +955,6 @@ async function shareRecipe() {
   let text = `🌿 ${r.name}\n`;
   if (r.tags) text += `${r.tags}\n`;
   text += `Serves: ${serving}\n\n`;
-
   text += `INGREDIENTS\n`;
   (r.ingredients || []).forEach(ing => {
     let line = '';
@@ -975,14 +967,9 @@ async function shareRecipe() {
     if (ing.notes) line += ` (${ing.notes})`;
     text += `• ${line.trim()}\n`;
   });
-
   text += `\nSTEPS\n`;
-  (r.steps || []).forEach((step, i) => {
-    text += `${i + 1}. ${step}\n`;
-  });
-
+  (r.steps || []).forEach((step, i) => { text += `${i + 1}. ${step}\n`; });
   if (r.story && r.story.trim()) text += `\nAbout: ${r.story}\n`;
-
   text += `\nFrom Nourish Forward Recipes: https://dsshrek-ai.github.io/senior-family-cookbook/nourish-forward`;
 
   const shareData = { title: r.name, text };
@@ -1021,28 +1008,21 @@ function showToast(msg) {
 // ---- Helpers ----
 function buildIngText(ing, sf) {
   let html = '';
-
   if (ing.quantity !== '' && ing.quantity !== null && ing.quantity !== undefined) {
     const raw = parseFloat(ing.quantity);
     if (!isNaN(raw)) {
-      const scaled = Math.round(raw * sf * 1000) / 1000;
-      const display = formatQty(scaled);
-      html += `<span class="qty">${display}</span> `;
+      html += `<span class="qty">${formatQty(Math.round(raw * sf * 1000) / 1000)}</span> `;
     }
   }
-
   if (ing.unit && ing.unit !== 'to taste') {
     html += `<span class="unit">${escHtml(ing.unit)}</span> `;
   } else if (ing.unit === 'to taste') {
     html += `<span class="unit">to taste</span> `;
   }
-
   html += `<span class="ing-name">${escHtml(ing.ingredient)}</span>`;
-
   if (ing.notes) {
     html += ` <span class="ing-note">(${escHtml(ing.notes)})</span>`;
   }
-
   return html;
 }
 
@@ -1052,9 +1032,7 @@ function formatQty(n) {
   const whole = Math.floor(n);
   const dec   = Math.round((n - whole) * 100) / 100;
   for (const [val, sym] of fracs) {
-    if (Math.abs(dec - val) < 0.04) {
-      return whole > 0 ? `${whole}${sym}` : sym;
-    }
+    if (Math.abs(dec - val) < 0.04) return whole > 0 ? `${whole}${sym}` : sym;
   }
   return String(Math.round(n * 100) / 100);
 }
@@ -1068,19 +1046,9 @@ function escHtml(str) {
     .replace(/"/g, '&quot;');
 }
 
-function showLoading(show) {
-  loadingOverlay.classList.toggle('hidden', !show);
-}
-
-function showStatus(msg) {
-  statusBar.textContent = msg;
-  statusBar.classList.remove('hidden');
-}
-
-function hideStatus() {
-  statusBar.classList.add('hidden');
-}
-
+function showLoading(show) { loadingOverlay.classList.toggle('hidden', !show); }
+function showStatus(msg)   { statusBar.textContent = msg; statusBar.classList.remove('hidden'); }
+function hideStatus()      { statusBar.classList.add('hidden'); }
 function showLastUpdated() {
   const ts = localStorage.getItem(STORAGE_UPDATED);
   lastUpdated.textContent = ts ? `Updated ${ts}` : '';
@@ -1093,7 +1061,6 @@ function setupInstallPrompt() {
   window.addEventListener('beforeinstallprompt', e => {
     e.preventDefault();
     deferredPrompt = e;
-
     if (window.matchMedia('(display-mode: standalone)').matches) return;
 
     const banner = document.createElement('div');

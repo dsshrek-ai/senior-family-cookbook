@@ -1,6 +1,6 @@
 /* ============================================
    NOURISH FORWARD RECIPES — PWA Styles
-   Emerald + Violet
+   Emerald + Violet + Mint
    ============================================ */
 
 :root {
@@ -10,7 +10,7 @@
   --brown:       #7C5CBF;
   --brown-light: #A480D9;
   --cream:       #F2F8F5;
-  --cream-dark:  #E4F0EA;
+  --cream-dark:  #E2EFE8;
   --text-dark:   #1A2E22;
   --text-mid:    #3A5A46;
   --text-light:  #6B8E7A;
@@ -52,13 +52,8 @@ html, body {
   will-change: transform;
 }
 
-.screen.active {
-  transform: translateX(0);
-}
-
-.screen.slide-out {
-  transform: translateX(-30%);
-}
+.screen.active  { transform: translateX(0); }
+.screen.slide-out { transform: translateX(-30%); }
 
 /* ============ HEADER ============ */
 .app-header {
@@ -175,7 +170,7 @@ html, body {
 
 /* ============ RESTORE BANNER ============ */
 .restore-banner {
-  background: #F0EBF8;
+  background: #F3EEFF;
   border: 1.5px solid var(--brown-light);
   border-radius: var(--radius-sm);
   padding: 12px 14px;
@@ -242,9 +237,7 @@ html, body {
   box-shadow: 0 0 0 3px rgba(44,107,79,0.15);
 }
 
-#search-input::placeholder {
-  color: var(--text-light);
-}
+#search-input::placeholder { color: var(--text-light); }
 
 .clear-btn {
   position: absolute;
@@ -283,9 +276,7 @@ html, body {
   color: var(--green);
 }
 
-.select-wrapper {
-  position: relative;
-}
+.select-wrapper { position: relative; }
 
 .select-wrapper select {
   width: 100%;
@@ -495,13 +486,9 @@ html, body {
 }
 
 /* ============ RECIPE SECTIONS ============ */
-.recipe-body {
-  padding: 0 16px;
-}
+.recipe-body { padding: 0 16px; }
 
-.section {
-  margin-top: 20px;
-}
+.section { margin-top: 20px; }
 
 .section-header {
   display: flex;
@@ -549,9 +536,7 @@ html, body {
 
 .item:active { background: var(--cream-dark); }
 
-.item.checked {
-  background: rgba(44,107,79,0.06);
-}
+.item.checked { background: rgba(44,107,79,0.06); }
 
 .item-check {
   width: 22px;
@@ -613,9 +598,7 @@ html, body {
   transition: background 0.2s;
 }
 
-.item.checked .step-number {
-  background: var(--text-light);
-}
+.item.checked .step-number { background: var(--text-light); }
 
 /* ============ STORY / NUTRITION ============ */
 .prose-section {
@@ -640,12 +623,12 @@ html, body {
 }
 
 /* ============ STORY / NUTRITION HEADERS ============ */
-.section-header.story-header { border-bottom-color: var(--brown); }
-.section-header.story-header h2 { color: var(--brown); }
+.section-header.story-header     { border-bottom-color: var(--brown); }
+.section-header.story-header h2  { color: var(--brown); }
 .section-header.story-header svg { color: var(--brown); }
 
-.section-header.nutrition-header { border-bottom-color: var(--brown-light); }
-.section-header.nutrition-header h2 { color: var(--brown); }
+.section-header.nutrition-header     { border-bottom-color: var(--brown-light); }
+.section-header.nutrition-header h2  { color: var(--brown); }
 .section-header.nutrition-header svg { color: var(--brown-light); }
 
 /* ============ SPACER ============ */
@@ -674,12 +657,7 @@ html, body {
   to   { transform: translateY(0);    opacity: 1; }
 }
 
-.install-prompt p {
-  flex: 1;
-  font-size: 14px;
-  line-height: 1.3;
-}
-
+.install-prompt p { flex: 1; font-size: 14px; line-height: 1.3; }
 .install-prompt strong { color: var(--brown-light); }
 
 .install-btn {
@@ -711,19 +689,10 @@ html, body {
 ::-webkit-scrollbar-thumb { background: var(--cream-dark); border-radius: 2px; }
 
 /* ============ INGREDIENT QTY HIGHLIGHT ============ */
-.qty {
-  font-weight: 600;
-  color: var(--green-dark);
-}
-
+.qty  { font-weight: 600; color: var(--green-dark); }
 .unit { color: var(--text-mid); }
 .ing-name { color: var(--text-dark); }
-
-.ing-note {
-  font-size: 13px;
-  color: var(--text-light);
-  font-style: italic;
-}
+.ing-note { font-size: 13px; color: var(--text-light); font-style: italic; }
 
 /* ============ UPDATE BANNER ============ */
 .update-banner {
@@ -745,11 +714,7 @@ html, body {
 
 .update-banner.hidden { display: none; }
 
-.update-banner span {
-  flex: 1;
-  font-size: 14px;
-  font-weight: 600;
-}
+.update-banner span { flex: 1; font-size: 14px; font-weight: 600; }
 
 #btn-update {
   background: var(--brown-light);
@@ -842,9 +807,7 @@ html, body {
   font-family: var(--font-body);
 }
 
-.saved-serving-row strong {
-  color: var(--green);
-}
+.saved-serving-row strong { color: var(--green); }
 
 /* ============ PRINT ============ */
 @media print {
