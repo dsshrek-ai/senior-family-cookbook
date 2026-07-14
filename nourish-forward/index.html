@@ -93,6 +93,7 @@
       <!-- QUICK FILTER -->
       <div class="quick-filter-section">
         <button id="btn-favs" class="btn-quick-filter">♥ Favorites</button>
+        <button id="btn-reset-filters" class="btn-quick-filter btn-reset-filters hidden">⟲ Reset Filters</button>
       </div>
       <div class="clear-favs-section hidden" id="clear-favs-section">
         <button id="btn-print-favs" class="btn-print-favs">🖨 Print all favorites</button>
@@ -152,6 +153,15 @@
     <span>🔄 A new version is available!</span>
     <button id="btn-update">Update Now</button>
     <button id="btn-dismiss-update" class="dismiss-update">Later</button>
+  </div>
+
+  <!-- PRINT FRAME -->
+  <div id="print-frame">
+    <div class="print-toolbar">
+      <button id="btn-print-back" class="close-btn">← Back to Recipe</button>
+      <button id="btn-print-now" class="print-now-btn">🖨 Print</button>
+    </div>
+    <div id="print-body"></div>
   </div>
 
   <script src="app.js"></script>
