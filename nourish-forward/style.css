@@ -888,7 +888,8 @@ html, body {
 #print-frame .approx-note { font-size: 11px; color: #7C5CBF; margin-top: 16px; font-family: var(--font-body); }
 
 @media print {
+  html, body { height: auto !important; overflow: visible !important; }
   body > *:not(#print-frame) { display: none !important; }
-  #print-frame { display: block !important; position: static; padding: 0; }
+  #print-frame { display: block !important; position: static; padding: 0; overflow: visible !important; height: auto !important; }
   #print-frame .print-toolbar { display: none !important; }
 }

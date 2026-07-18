@@ -1,4 +1,4 @@
-const CACHE = 'nfr-v2';
+const CACHE = 'nfr-v3';
 const ASSETS = [
   './',
   './index.html',
