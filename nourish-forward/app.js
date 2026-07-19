@@ -39,8 +39,6 @@ const recipeContent = document.getElementById('recipe-content');
 const searchInput   = document.getElementById('search-input');
 const btnClearSearch = document.getElementById('btn-clear-search');
 const btnResetFilters = document.getElementById('btn-reset-filters');
-const printFrame    = document.getElementById('print-frame');
-const printBody     = document.getElementById('print-body');
 
 // ---- Init ----
 window.addEventListener('load', init);
@@ -63,17 +61,63 @@ async function init() {
   updateClearFavsVisibility();
 }
 
-// ---- Print Frame (in-app overlay; avoids window.open/close, which
-//      can exit an installed iOS PWA instead of going "back") ----
-function showPrintFrame(html) {
-  printBody.innerHTML = html;
-  printFrame.classList.add('active');
-  printFrame.scrollTop = 0;
-}
+// ---- Print (opens a real Safari tab, not our own webview — calling
+//      window.print() from inside an installed iOS PWA's own webview
+//      is unreliable: it can get stuck on page 1 with an unresponsive
+//      cancel button. A separate tab prints correctly and there's no
+//      close/back button here to accidentally exit the app.) ----
+const PRINT_STYLES = `
+  body { font-family: Georgia, serif; font-size: 13px; margin: 24px 32px; color: #2c2c2c; max-width: 700px; }
+  h1   { font-size: 22px; color: #2C6B4F; margin: 0 0 4px; }
+  .print-meta { font-size: 12px; color: #888; margin-bottom: 16px; font-family: sans-serif; }
+  .recipes-summary { font-size: 12px; color: #888; margin-bottom: 16px; font-family: sans-serif; line-height: 1.6; }
+  .recipes-summary strong { color: #2C6B4F; display: block; margin-bottom: 4px; }
+  .scale-note { color: #7C5CBF; font-style: italic; }
+  h2   { font-size: 14px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.08em;
+         color: #2C6B4F; border-bottom: 2px solid #2C6B4F; padding-bottom: 3px;
+         margin: 20px 0 10px; font-family: sans-serif; }
+  table { border-collapse: collapse; width: 100%; margin-bottom: 8px; }
+  td   { padding: 5px 6px; vertical-align: top; font-size: 13px; }
+  tr   { border-bottom: 1px solid #f0f0f0; }
+  .qty-col  { width: 48px; text-align: right; font-weight: bold; color: #2C6B4F; white-space: nowrap; }
+  .unit-col { width: 60px; color: #3A5A46; white-space: nowrap; padding-left: 6px; }
+  .chk-col  { width: 22px; font-size: 16px; color: #aaa; }
+  .ing-col  { font-size: 14px; }
+  .note { font-size: 12px; color: #888; font-style: italic; }
+  .approx { color: #7C5CBF; font-style: italic; margin-right: 1px; }
+  .approx-note { font-size: 11px; color: #7C5CBF; margin-top: 16px; font-family: sans-serif; }
+  .dept-row td { background: #e8f2ec; color: #2C6B4F; font-weight: bold; font-family: sans-serif;
+                 font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+                 padding: 10px 4px 3px; border-bottom: 2px solid #2C6B4F; }
+  ol   { padding-left: 20px; }
+  li   { margin-bottom: 6px; line-height: 1.5; }
+  .story { background: #F2F8F5; border-left: 3px solid #A480D9; padding: 10px 14px;
+           margin-top: 16px; font-size: 12px; line-height: 1.6; color: #3A5A46; border-radius: 4px; }
+  .recipe-block { page-break-after: always; padding-bottom: 24px; }
+  .recipe-block:last-child { page-break-after: avoid; }
+  .print-tip { font-size: 13px; color: #3A5A46; background: #F2F8F5; border-radius: 8px;
+               padding: 10px 14px; margin-bottom: 20px; font-family: sans-serif; }
+  @media print { .print-tip { display: none; } }
+`;
 
-function closePrintFrame() {
-  printFrame.classList.remove('active');
-  printBody.innerHTML = '';
+function openPrintWindow(title, bodyHtml) {
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>${title}</title>
+<style>${PRINT_STYLES}</style>
+</head>
+<body>
+  <p class="print-tip">🖨 Tap the Share icon, then choose <strong>Print</strong>. When you're done, switch back to Nourish Forward Recipes from your Home Screen or the App Switcher.</p>
+  ${bodyHtml}
+</body>
+</html>`;
+
+  const win = window.open('', '_blank');
+  if (!win) { showToast('Please allow pop-ups to print'); return; }
+  win.document.write(html);
+  win.document.close();
 }
 
 // ---- Print Recipe ----
@@ -117,7 +161,7 @@ function printRecipe() {
     ${nutriBlock}
   `;
 
-  showPrintFrame(html);
+  openPrintWindow(r.name, html);
 }
 
 function printShoppingList() {
@@ -148,7 +192,7 @@ function printShoppingList() {
     <table>${rows}</table>
   `;
 
-  showPrintFrame(html);
+  openPrintWindow(`Shopping List — ${r.name}`, html);
 }
 
 function printAllFavorites() {
@@ -189,7 +233,7 @@ function printAllFavorites() {
     ${recipesHtml}
   `;
 
-  showPrintFrame(html);
+  openPrintWindow('Favorite Recipes', html);
 }
 
 // ---- Grocery Departments ----
@@ -409,7 +453,7 @@ function printCombinedShoppingList() {
     <p class="approx-note">~ Quantity is approximate (volume + weight combined)<br>Checked-off ingredients are excluded from this list.</p>
   `;
 
-  showPrintFrame(html);
+  openPrintWindow('Combined Shopping List', html);
 }
 
 function registerSW() {
@@ -605,8 +649,6 @@ document.getElementById('btn-share-app').addEventListener('click', shareApp);
 document.getElementById('btn-favorite').addEventListener('click', toggleFavorite);
 document.getElementById('btn-print-favs').addEventListener('click', printAllFavorites);
 document.getElementById('btn-combined-shopping').addEventListener('click', printCombinedShoppingList);
-document.getElementById('btn-print-back').addEventListener('click', closePrintFrame);
-document.getElementById('btn-print-now').addEventListener('click', () => window.print());
 
 document.getElementById('btn-favs').addEventListener('click', () => {
   favoritesOnly = !favoritesOnly;
