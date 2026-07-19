@@ -537,7 +537,7 @@ function rebuildCategoryFilter(recipes) {
   recipes.forEach(r => {
     if (r.tags) r.tags.split(',').forEach(t => {
       const trimmed = t.trim();
-      if (trimmed && trimmed.toLowerCase() !== 'nourish forward') tagSet.add(trimmed);
+      if (trimmed) tagSet.add(trimmed);
     });
   });
   tagSelect.innerHTML = '<option value="all">— Select Category —</option>';
@@ -602,16 +602,12 @@ tagSelect.addEventListener('change', () => {
 searchInput.addEventListener('input', () => {
   const hasText = searchInput.value.length > 0;
   btnClearSearch.classList.toggle('hidden', !hasText);
-  if (searchInput.value !== 'Nourish Forward') {
-    document.getElementById('btn-nourish').classList.remove('active');
-  }
   populateRecipeList(tagSelect.value === '— Select Category —' ? 'all' : tagSelect.value, searchInput.value);
 });
 
 btnClearSearch.addEventListener('click', () => {
   searchInput.value = '';
   btnClearSearch.classList.add('hidden');
-  document.getElementById('btn-nourish').classList.remove('active');
   rebuildCategoryFilter(allData.recipes);
   tagSelect.value = 'all';
   searchInput.focus();
@@ -631,25 +627,6 @@ btnLoad.addEventListener('click', () => {
 });
 
 btnRefresh.addEventListener('click', fetchFromWeb);
-
-document.getElementById('btn-nourish').addEventListener('click', () => {
-  const btn = document.getElementById('btn-nourish');
-  const active = btn.classList.toggle('active');
-  if (active) {
-    searchInput.value = 'Nourish Forward';
-    btnClearSearch.classList.remove('hidden');
-    const nourishRecipes = allData.recipes.filter(r =>
-      r.tags && r.tags.toLowerCase().includes('nourish forward')
-    );
-    rebuildCategoryFilter(nourishRecipes);
-  } else {
-    searchInput.value = '';
-    btnClearSearch.classList.add('hidden');
-    rebuildCategoryFilter(allData.recipes);
-  }
-  tagSelect.value = 'all';
-  populateRecipeList('all', searchInput.value);
-});
 
 btnRestore.addEventListener('click', () => {
   const backup = localStorage.getItem(STORAGE_BACKUP);
