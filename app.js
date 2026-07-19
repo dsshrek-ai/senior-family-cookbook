@@ -60,7 +60,65 @@ async function init() {
   updateClearFavsVisibility();
 }
 
-// ---- Service Worker ----
+// ---- Print (opens a real Safari tab, not our own webview — calling
+//      window.print() from inside an installed iOS PWA's own webview
+//      is unreliable: it can get stuck on page 1 with an unresponsive
+//      cancel button. A separate tab prints correctly and there's no
+//      close/back button here to accidentally exit the app.) ----
+const PRINT_STYLES = `
+  body { font-family: Georgia, serif; font-size: 13px; margin: 24px 32px; color: #2c2c2c; max-width: 700px; }
+  h1   { font-size: 22px; color: #3D5A3E; margin: 0 0 4px; }
+  .print-meta { font-size: 12px; color: #888; margin-bottom: 16px; font-family: sans-serif; }
+  .recipes-summary { font-size: 12px; color: #888; margin-bottom: 16px; font-family: sans-serif; line-height: 1.6; }
+  .recipes-summary strong { color: #3D5A3E; display: block; margin-bottom: 4px; }
+  .scale-note { color: #8B6914; font-style: italic; }
+  h2   { font-size: 14px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.08em;
+         color: #3D5A3E; border-bottom: 2px solid #3D5A3E; padding-bottom: 3px;
+         margin: 20px 0 10px; font-family: sans-serif; }
+  table { border-collapse: collapse; width: 100%; margin-bottom: 8px; }
+  td   { padding: 5px 6px; vertical-align: top; font-size: 13px; }
+  tr   { border-bottom: 1px solid #f0f0f0; }
+  .qty-col  { width: 48px; text-align: right; font-weight: bold; color: #3D5A3E; white-space: nowrap; }
+  .unit-col { width: 60px; color: #6B5B45; white-space: nowrap; padding-left: 6px; }
+  .chk-col  { width: 22px; font-size: 16px; color: #aaa; }
+  .ing-col  { font-size: 14px; }
+  .note { font-size: 12px; color: #888; font-style: italic; }
+  .approx { color: #8B6914; font-style: italic; margin-right: 1px; }
+  .approx-note { font-size: 11px; color: #8B6914; margin-top: 16px; font-family: sans-serif; }
+  .dept-row td { background: #f0f4f0; color: #3D5A3E; font-weight: bold; font-family: sans-serif;
+                 font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+                 padding: 10px 4px 3px; border-bottom: 2px solid #3D5A3E; }
+  ol   { padding-left: 20px; }
+  li   { margin-bottom: 6px; line-height: 1.5; }
+  .story { background: #F5F0E8; border-left: 3px solid #C4A35A; padding: 10px 14px;
+           margin-top: 16px; font-size: 12px; line-height: 1.6; color: #5A4A35; border-radius: 4px; }
+  .recipe-block { page-break-after: always; padding-bottom: 24px; }
+  .recipe-block:last-child { page-break-after: avoid; }
+  .print-tip { font-size: 13px; color: #5A4A35; background: #F5F0E8; border-radius: 8px;
+               padding: 10px 14px; margin-bottom: 20px; font-family: sans-serif; }
+  @media print { .print-tip { display: none; } }
+`;
+
+function openPrintWindow(title, bodyHtml) {
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>${title}</title>
+<style>${PRINT_STYLES}</style>
+</head>
+<body>
+  <p class="print-tip">🖨 Tap the Share icon, then choose <strong>Print</strong>. When you're done, switch back to Senior Family Cookbook from your Home Screen or the App Switcher.</p>
+  ${bodyHtml}
+</body>
+</html>`;
+
+  const win = window.open('', '_blank');
+  if (!win) { showToast('Please allow pop-ups to print'); return; }
+  win.document.write(html);
+  win.document.close();
+}
+
 // ---- Print Recipe ----
 function printRecipe() {
   if (!currentRecipe) return;
@@ -69,7 +127,6 @@ function printRecipe() {
   const sf      = serving / baseServings;
   const scaled  = Math.round(serving * 10) / 10;
 
-  // Build ingredients HTML
   let ingRows = '';
   (r.ingredients || []).forEach(ing => {
     let qty = '';
@@ -83,9 +140,8 @@ function printRecipe() {
     ingRows += `<tr><td class="qty-col">${qty}</td><td class="unit-col">${unit}</td><td>${name}${notes}</td></tr>`;
   });
 
-  // Build steps HTML
   let stepsList = '';
-  (r.steps || []).forEach((step, i) => {
+  (r.steps || []).forEach(step => {
     stepsList += `<li>${step}</li>`;
   });
 
@@ -93,54 +149,18 @@ function printRecipe() {
   const nutriBlock = r.nutrition ? `<div class="story"><strong>Nutrition:</strong><br>${r.nutrition}</div>` : '';
   const scaleNote  = sf !== 1 ? ` <span class="scale-note">(scaled to ${scaled} servings)</span>` : '';
 
-  const html = `<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<title>${r.name}</title>
-<style>
-  body { font-family: Georgia, serif; font-size: 13px; margin: 24px 32px; color: #2c2c2c; max-width: 700px; }
-  h1   { font-size: 24px; color: #3D5A3E; margin: 0 0 4px; }
-  .meta { font-size: 12px; color: #888; margin-bottom: 20px; font-family: sans-serif; }
-  .scale-note { color: #8B6914; font-style: italic; }
-  h2   { font-size: 14px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.08em;
-         color: #3D5A3E; border-bottom: 2px solid #3D5A3E; padding-bottom: 3px;
-         margin: 20px 0 10px; font-family: sans-serif; }
-  table { border-collapse: collapse; width: 100%; margin-bottom: 8px; }
-  td   { padding: 3px 6px; vertical-align: top; font-size: 13px; }
-  .qty-col  { width: 48px; text-align: right; font-weight: bold; color: #3D5A3E; white-space: nowrap; }
-  .unit-col { width: 60px; color: #6B5B45; white-space: nowrap; padding-left: 6px; }
-  ol   { padding-left: 20px; }
-  li   { margin-bottom: 6px; line-height: 1.5; }
-  .story { background: #F5F0E8; border-left: 3px solid #C4A35A; padding: 10px 14px;
-           margin-top: 16px; font-size: 12px; line-height: 1.6; color: #5A4A35; border-radius: 4px; }
-  .toolbar { display: flex; justify-content: space-between; align-items: center;
-             margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid #ddd; }
-  .close-btn { padding: 8px 18px; background: #3D5A3E; color: #fff; border: none;
-               border-radius: 8px; font-size: 14px; font-family: sans-serif; cursor: pointer; }
-  .print-tip { font-size: 12px; color: #888; font-family: sans-serif; max-width: 220px; text-align: right; }
-  @media print { .toolbar { display: none; } }
-</style>
-</head>
-<body>
-  <div class="toolbar">
-    <button class="close-btn" onclick="window.close()">← Back to Cookbook</button>
-    <span class="print-tip">Tap Share → Print to print this recipe</span>
-  </div>
-  <h1>${r.name}</h1>
-  <div class="meta">Base: ${baseServings} servings${scaleNote} · Senior Family Cookbook</div>
-  ${storyBlock}
-  <h2>Ingredients</h2>
-  <table>${ingRows}</table>
-  <h2>Steps</h2>
-  <ol>${stepsList}</ol>
-  ${nutriBlock}
-</body>
-</html>`;
+  const html = `
+    <h1>${r.name}</h1>
+    <div class="print-meta">Base: ${baseServings} servings${scaleNote} · Senior Family Cookbook</div>
+    ${storyBlock}
+    <h2>Ingredients</h2>
+    <table>${ingRows}</table>
+    <h2>Steps</h2>
+    <ol>${stepsList}</ol>
+    ${nutriBlock}
+  `;
 
-  const win = window.open('', '_blank');
-  win.document.write(html);
-  win.document.close();
+  openPrintWindow(r.name, html);
 }
 
 function printShoppingList() {
@@ -158,46 +178,20 @@ function printShoppingList() {
       if (!isNaN(raw)) qty = formatQty(raw * sf);
     }
     rows += `<tr>
-      <td class="chk-col"><span class="chk">☐</span></td>
+      <td class="chk-col">☐</td>
       <td class="qty-col">${qty}</td>
       <td class="unit-col">${ing.unit || ''}</td>
       <td>${ing.ingredient || ''}${ing.notes ? ` <span class="note">(${ing.notes})</span>` : ''}</td>
     </tr>`;
   });
 
-  const html = `<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><title>Shopping List — ${r.name}</title>
-<style>
-  body  { font-family: Georgia, serif; font-size: 14px; margin: 24px 32px; color: #2c2c2c; max-width: 600px; }
-  h1    { font-size: 20px; color: #3D5A3E; margin: 0 0 4px; }
-  .sub  { font-size: 12px; color: #888; margin-bottom: 20px; font-family: sans-serif; }
-  table { border-collapse: collapse; width: 100%; }
-  tr    { border-bottom: 1px solid #eee; }
-  td    { padding: 6px 4px; vertical-align: middle; font-size: 14px; }
-  .chk-col  { width: 24px; font-size: 18px; color: #aaa; }
-  .qty-col  { width: 44px; text-align: right; font-weight: bold; color: #3D5A3E; white-space: nowrap; }
-  .unit-col { width: 56px; color: #6B5B45; padding-left: 6px; white-space: nowrap; }
-  .note { font-size: 12px; color: #888; font-style: italic; }
-  .toolbar { display: flex; justify-content: space-between; align-items: center;
-             margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid #ddd; }
-  .close-btn { padding: 8px 18px; background: #3D5A3E; color: #fff; border: none;
-               border-radius: 8px; font-size: 14px; font-family: sans-serif; cursor: pointer; }
-  .print-tip { font-size: 12px; color: #888; font-family: sans-serif; }
-  @media print { .toolbar { display: none; } }
-</style>
-</head><body>
-  <div class="toolbar">
-    <button class="close-btn" onclick="window.close()">← Back to Cookbook</button>
-    <span class="print-tip">Tap Share → Print</span>
-  </div>
-  <h1>Shopping List — ${r.name}</h1>
-  <div class="sub">Senior Family Cookbook${scaleNote}</div>
-  <table>${rows}</table>
-</body></html>`;
+  const html = `
+    <h1>Shopping List — ${r.name}</h1>
+    <div class="print-meta">Senior Family Cookbook${scaleNote}</div>
+    <table>${rows}</table>
+  `;
 
-  const win = window.open('', '_blank');
-  win.document.write(html);
-  win.document.close();
+  openPrintWindow(`Shopping List — ${r.name}`, html);
 }
 
 function printAllFavorites() {
@@ -207,30 +201,6 @@ function printAllFavorites() {
     .map(name => allData.recipes.find(r => r.name === name))
     .filter(Boolean)
     .sort((a, b) => a.name.localeCompare(b.name));
-
-  const printStyles = `
-    body  { font-family: Georgia, serif; font-size: 13px; margin: 24px 32px; color: #2c2c2c; }
-    h1    { font-size: 22px; color: #3D5A3E; margin: 0 0 4px; }
-    .meta { font-size: 12px; color: #888; margin-bottom: 16px; font-family: sans-serif; }
-    h2    { font-size: 13px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.08em;
-            color: #3D5A3E; border-bottom: 2px solid #3D5A3E; padding-bottom: 3px; margin: 16px 0 8px; font-family: sans-serif; }
-    table { border-collapse: collapse; width: 100%; margin-bottom: 8px; }
-    td    { padding: 3px 6px; vertical-align: top; font-size: 13px; }
-    .qty-col  { width: 48px; text-align: right; font-weight: bold; color: #3D5A3E; white-space: nowrap; }
-    .unit-col { width: 60px; color: #6B5B45; white-space: nowrap; padding-left: 6px; }
-    ol    { padding-left: 20px; margin: 0; }
-    li    { margin-bottom: 5px; line-height: 1.5; }
-    .story { background: #F5F0E8; border-left: 3px solid #C4A35A; padding: 8px 12px;
-             margin-top: 12px; font-size: 12px; line-height: 1.6; color: #5A4A35; }
-    .recipe-block { page-break-after: always; padding-bottom: 24px; }
-    .recipe-block:last-child { page-break-after: avoid; }
-    .toolbar { display: flex; justify-content: space-between; align-items: center;
-               margin-bottom: 24px; padding-bottom: 14px; border-bottom: 2px solid #3D5A3E; }
-    .close-btn { padding: 8px 18px; background: #3D5A3E; color: #fff; border: none;
-                 border-radius: 8px; font-size: 14px; font-family: sans-serif; cursor: pointer; }
-    .print-tip { font-size: 12px; color: #888; font-family: sans-serif; }
-    @media print { .toolbar { display: none; } }
-  `;
 
   let recipesHtml = '';
   favRecipes.forEach(r => {
@@ -243,12 +213,12 @@ function printAllFavorites() {
         <td>${ing.ingredient || ''}${ing.notes ? ` <em>(${ing.notes})</em>` : ''}</td>
       </tr>`;
     });
-    let stepsList = (r.steps || []).map((s, i) => `<li>${s}</li>`).join('');
+    const stepsList = (r.steps || []).map(s => `<li>${s}</li>`).join('');
     const storyBlock = r.story ? `<div class="story"><strong>About:</strong> ${r.story}</div>` : '';
 
     recipesHtml += `<div class="recipe-block">
       <h1>${r.name}</h1>
-      <div class="meta">${r.baseServings} servings · Senior Family Cookbook</div>
+      <div class="print-meta">${r.baseServings} servings · Senior Family Cookbook</div>
       ${storyBlock}
       <h2>Ingredients</h2>
       <table>${ingRows}</table>
@@ -257,20 +227,12 @@ function printAllFavorites() {
     </div>`;
   });
 
-  const html = `<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><title>Favorite Recipes</title>
-<style>${printStyles}</style>
-</head><body>
-  <div class="toolbar">
-    <button class="close-btn" onclick="window.close()">← Back to Cookbook</button>
-    <span class="print-tip">${favRecipes.length} recipe${favRecipes.length !== 1 ? 's' : ''} · Tap Share → Print</span>
-  </div>
-  ${recipesHtml}
-</body></html>`;
+  const html = `
+    <div class="print-meta">${favRecipes.length} favorite recipe${favRecipes.length !== 1 ? 's' : ''} · Senior Family Cookbook</div>
+    ${recipesHtml}
+  `;
 
-  const win = window.open('', '_blank');
-  win.document.write(html);
-  win.document.close();
+  openPrintWindow('Favorite Recipes', html);
 }
 
 // ---- Grocery Departments ----
@@ -494,47 +456,14 @@ function printCombinedShoppingList() {
     </tr>`;
   });
 
-  const html = `<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><title>Combined Shopping List</title>
-<style>
-  body  { font-family: Georgia, serif; font-size: 14px; margin: 24px 32px; color: #2c2c2c; max-width: 640px; }
-  h1    { font-size: 22px; color: #3D5A3E; margin: 0 0 6px; }
-  .recipes { font-size: 12px; color: #888; margin-bottom: 20px; font-family: sans-serif; line-height: 1.6; }
-  .recipes strong { color: #3D5A3E; display: block; margin-bottom: 4px; }
-  table { border-collapse: collapse; width: 100%; }
-  tr    { border-bottom: 1px solid #eee; }
-  td    { padding: 7px 4px; vertical-align: middle; }
-  .chk-col  { width: 24px; font-size: 18px; color: #aaa; }
-  .qty-col  { width: 52px; text-align: right; font-weight: bold; color: #3D5A3E; white-space: nowrap; padding-right: 4px; }
-  .unit-col { width: 56px; color: #6B5B45; white-space: nowrap; padding-right: 8px; }
-  .ing-col  { font-size: 14px; }
-  .approx   { color: #8B6914; font-style: italic; margin-right: 1px; }
-  .note-row td { font-size: 11px; color: #aaa; padding: 2px 4px 6px 28px; font-style: italic; border: none; }
-  .toolbar  { display: flex; justify-content: space-between; align-items: center;
-              margin-bottom: 20px; padding-bottom: 14px; border-bottom: 2px solid #3D5A3E; }
-  .close-btn { padding: 8px 18px; background: #3D5A3E; color: #fff; border: none;
-               border-radius: 8px; font-size: 14px; font-family: sans-serif; cursor: pointer; }
-  .print-tip { font-size: 12px; color: #888; font-family: sans-serif; }
-  .dept-row td { background: #f0f4f0; color: #3D5A3E; font-weight: bold; font-family: sans-serif;
-                 font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
-                 padding: 10px 4px 3px; border-bottom: 2px solid #3D5A3E; }
-  .approx-note { font-size: 11px; color: #8B6914; margin-top: 16px; font-family: sans-serif; }
-  @media print { .toolbar { display: none; } }
-</style>
-</head><body>
-  <div class="toolbar">
-    <button class="close-btn" onclick="window.close()">← Back to Cookbook</button>
-    <span class="print-tip">Tap Share → Print</span>
-  </div>
-  <h1>Combined Shopping List</h1>
-  <div class="recipes"><strong>Recipes included:</strong>${recipeSummary}</div>
-  <table>${rows}</table>
-  <p class="approx-note">~ Quantity is approximate (volume + weight combined using pint = pound)<br>Checked-off ingredients in recipes are excluded from this list.</p>
-</body></html>`;
+  const html = `
+    <h1>Combined Shopping List</h1>
+    <div class="recipes-summary"><strong>Recipes included:</strong>${recipeSummary}</div>
+    <table>${rows}</table>
+    <p class="approx-note">~ Quantity is approximate (volume + weight combined using pint = pound)<br>Checked-off ingredients in recipes are excluded from this list.</p>
+  `;
 
-  const win = window.open('', '_blank');
-  win.document.write(html);
-  win.document.close();
+  openPrintWindow('Combined Shopping List', html);
 }
 
 function registerSW() {
