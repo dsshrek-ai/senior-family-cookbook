@@ -101,10 +101,16 @@
         <button id="btn-clear-favs" class="btn-clear-favs">Clear all favorites</button>
       </div>
 
-      <button id="btn-load" class="btn-primary" disabled>
-        Open Recipe
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
-      </button>
+      <div class="action-buttons">
+        <button id="btn-load" class="btn-primary" disabled>
+          Open Recipe
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+        </button>
+        <button id="btn-browse" class="btn-secondary" disabled>
+          Browse
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+        </button>
+      </div>
 
       <div id="loading-overlay" class="loading-overlay hidden">
         <div class="spinner"></div>
@@ -146,6 +152,18 @@
     <main class="recipe-main" id="recipe-content">
       <!-- Dynamically populated -->
     </main>
+
+    <div id="browse-nav" class="browse-nav hidden">
+      <button id="btn-browse-prev" class="browse-nav-btn" aria-label="Previous recipe">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+        Prev
+      </button>
+      <span id="browse-position" class="browse-position"></span>
+      <button id="btn-browse-next" class="browse-nav-btn" aria-label="Next recipe">
+        Next
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+      </button>
+    </div>
   </div>
 
   <!-- UPDATE BANNER -->

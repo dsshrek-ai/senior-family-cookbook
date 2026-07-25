@@ -342,6 +342,43 @@ html, body {
   cursor: not-allowed;
 }
 
+.action-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.action-buttons > * { flex: 1; }
+
+.btn-secondary {
+  background: var(--white);
+  color: var(--green);
+  border: 2px solid var(--green);
+  border-radius: var(--radius-md);
+  padding: 12px 20px;
+  font-size: 16px;
+  font-family: var(--font-body);
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: background 0.2s, transform 0.1s;
+  -webkit-tap-highlight-color: transparent;
+  width: 100%;
+}
+
+.btn-secondary:active:not(:disabled) {
+  background: var(--cream-dark);
+  transform: scale(0.98);
+}
+
+.btn-secondary:disabled {
+  border-color: #A5C4B5;
+  color: #A5C4B5;
+  cursor: not-allowed;
+}
+
 /* ============ LOADING ============ */
 .loading-overlay {
   position: fixed;
@@ -815,4 +852,58 @@ html, body {
 }
 
 .saved-serving-row strong { color: var(--green); }
+
+/* ============ BROWSE MODE ============ */
+#screen-recipe.browsing .recipe-main {
+  padding-bottom: calc(96px + var(--safe-bottom));
+}
+
+.browse-nav {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  bottom: calc(16px + var(--safe-bottom));
+  background: var(--green-dark);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px;
+  z-index: 50;
+}
+
+.browse-nav.hidden { display: none; }
+
+.browse-nav-btn {
+  background: rgba(255,255,255,0.15);
+  color: var(--white);
+  border: none;
+  border-radius: var(--radius-md);
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: var(--font-body);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.2s, opacity 0.2s;
+}
+
+.browse-nav-btn:active:not(:disabled) { background: rgba(255,255,255,0.28); }
+
+.browse-nav-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.browse-position {
+  color: rgba(255,255,255,0.85);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  padding: 0 8px;
+}
 

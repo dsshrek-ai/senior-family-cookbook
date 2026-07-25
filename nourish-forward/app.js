@@ -21,6 +21,8 @@ let favorites      = new Set(JSON.parse(localStorage.getItem(STORAGE_FAVS) || '[
 let favoritesOnly  = false;
 let favScales      = JSON.parse(localStorage.getItem(STORAGE_FAV_SCALES) || '{}');
 let excl           = JSON.parse(localStorage.getItem(STORAGE_EXCL) || '{}');
+let browseList      = [];
+let browseIndex     = -1;
 
 // ---- DOM ----
 const screenHome    = document.getElementById('screen-home');
@@ -28,6 +30,11 @@ const screenRecipe  = document.getElementById('screen-recipe');
 const tagSelect     = document.getElementById('tag-select');
 const recipeSelect  = document.getElementById('recipe-select');
 const btnLoad       = document.getElementById('btn-load');
+const btnBrowse     = document.getElementById('btn-browse');
+const browseNav     = document.getElementById('browse-nav');
+const browsePosition = document.getElementById('browse-position');
+const btnBrowsePrev = document.getElementById('btn-browse-prev');
+const btnBrowseNext = document.getElementById('btn-browse-next');
 const btnBack       = document.getElementById('btn-back');
 const btnRefresh    = document.getElementById('btn-refresh');
 const btnRestore    = document.getElementById('btn-restore');
@@ -534,10 +541,7 @@ function rebuildCategoryFilter(recipes) {
   });
 }
 
-function populateRecipeList(tag, search) {
-  recipeSelect.innerHTML = '<option value="">— Choose a recipe —</option>';
-  btnLoad.disabled = true;
-
+function getFilteredRecipes(tag, search) {
   const term = (search || '').toLowerCase().trim();
   let recipes = allData.recipes;
 
@@ -562,13 +566,23 @@ function populateRecipeList(tag, search) {
     });
   }
 
-  const names = recipes.map(r => r.name).sort();
-  names.forEach(name => {
+  return recipes.slice().sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function populateRecipeList(tag, search) {
+  recipeSelect.innerHTML = '<option value="">— Choose a recipe —</option>';
+  btnLoad.disabled = true;
+
+  const recipes = getFilteredRecipes(tag, search);
+
+  recipes.forEach(r => {
     const opt = document.createElement('option');
-    opt.value = name;
-    opt.textContent = name;
+    opt.value = r.name;
+    opt.textContent = r.name;
     recipeSelect.appendChild(opt);
   });
+
+  btnBrowse.disabled = recipes.length === 0;
 
   updateResetFiltersVisibility();
 }
@@ -622,6 +636,26 @@ btnLoad.addEventListener('click', () => {
   openRecipe(recipe);
 });
 
+btnBrowse.addEventListener('click', () => {
+  const list = getFilteredRecipes(tagSelect.value, searchInput.value);
+  if (!list.length) return;
+  browseList  = list;
+  browseIndex = 0;
+  openRecipe(browseList[browseIndex], true);
+});
+
+btnBrowsePrev.addEventListener('click', () => {
+  if (browseIndex <= 0) return;
+  browseIndex--;
+  openRecipe(browseList[browseIndex], true);
+});
+
+btnBrowseNext.addEventListener('click', () => {
+  if (browseIndex >= browseList.length - 1) return;
+  browseIndex++;
+  openRecipe(browseList[browseIndex], true);
+});
+
 btnRefresh.addEventListener('click', fetchFromWeb);
 
 btnRestore.addEventListener('click', () => {
@@ -669,7 +703,7 @@ document.getElementById('btn-clear-favs').addEventListener('click', () => {
 });
 
 // ---- Recipe Screen ----
-function openRecipe(recipe) {
+function openRecipe(recipe, browsing = false) {
   currentRecipe  = recipe;
   baseServings   = recipe.baseServings || 4;
   scaleFactor    = 1;
@@ -683,11 +717,26 @@ function openRecipe(recipe) {
   screenRecipe.classList.add('active');
   screenRecipe.scrollTop = 0;
   recipeContent.scrollTop = 0;
+
+  if (!browsing) { browseList = []; browseIndex = -1; }
+  screenRecipe.classList.toggle('browsing', browsing);
+  browseNav.classList.toggle('hidden', !browsing);
+  if (browsing) updateBrowseNav();
+}
+
+function updateBrowseNav() {
+  browsePosition.textContent = `${browseIndex + 1} of ${browseList.length}`;
+  btnBrowsePrev.disabled = browseIndex <= 0;
+  btnBrowseNext.disabled = browseIndex >= browseList.length - 1;
 }
 
 function goHome() {
   screenRecipe.classList.remove('active');
   screenHome.classList.remove('slide-out');
+  screenRecipe.classList.remove('browsing');
+  browseNav.classList.add('hidden');
+  browseList = [];
+  browseIndex = -1;
 }
 
 function renderRecipe() {
