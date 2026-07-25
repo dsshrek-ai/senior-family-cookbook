@@ -533,7 +533,7 @@ function rebuildCategoryFilter(recipes) {
     });
   });
   tagSelect.innerHTML = '<option value="all">— Select Category —</option>';
-  [...tagSet].sort().forEach(tag => {
+  [...tagSet].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' })).forEach(tag => {
     const opt = document.createElement('option');
     opt.value = tag;
     opt.textContent = tag;
