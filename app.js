@@ -45,17 +45,29 @@ window.addEventListener('load', init);
 async function init() {
   registerSW();
   const stored = localStorage.getItem(STORAGE_KEY);
+  let loadedFromCache = false;
+
   if (stored) {
     try {
-      allData = JSON.parse(stored);
-      populateUI();
-      showLastUpdated();
+      const parsed = JSON.parse(stored);
+      // Only trust the cache if it actually has recipes in it - an empty or
+      // malformed cached result (e.g. from a prior fetch hiccup) shouldn't be
+      // treated as "recipes are present."
+      if (parsed && Array.isArray(parsed.recipes) && parsed.recipes.length > 0) {
+        allData = parsed;
+        populateUI();
+        showLastUpdated();
+        loadedFromCache = true;
+      }
     } catch (e) {
-      await fetchFromWeb();
+      // fall through to fetch
     }
-  } else {
+  }
+
+  if (!loadedFromCache) {
     await fetchFromWeb();
   }
+
   setupInstallPrompt();
   updateClearFavsVisibility();
 }
