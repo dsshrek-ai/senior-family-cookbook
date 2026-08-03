@@ -2,13 +2,17 @@
    SENIOR FAMILY COOKBOOK — App Logic
    ============================================ */
 
-const API_URL = 'https://script.google.com/macros/s/AKfycbzJ_eW_3TyedpTFM8ZkK7FePZ9iaWNR6plK-RoKYvEbF8RNNkdTb0KV90kuJHtQZeh7iQ/exec';
+const API_URL    = 'https://seniorfamily.org/api/api.php';
+const COLLECTION = 'senior-family';
 const STORAGE_KEY      = 'sfcAllRecipes';
 const STORAGE_BACKUP   = 'sfcAllRecipesBackup';
 const STORAGE_UPDATED  = 'sfcLastUpdated';
 const STORAGE_FAVS     = 'sfcFavorites';
 const STORAGE_FAV_SCALES = 'sfcFavScales';
 const STORAGE_EXCL     = 'sfcExcluded';
+const STORAGE_AUTH_TOKEN      = 'sfcAuthToken';
+const STORAGE_AUTH_NAME       = 'sfcAuthName';
+const STORAGE_AUTH_COLLECTION = 'sfcAuthCollection';
 
 // ---- State ----
 let allData        = null;   // { recipeList, recipes }
@@ -21,6 +25,10 @@ let favorites      = new Set(JSON.parse(localStorage.getItem(STORAGE_FAVS) || '[
 let favoritesOnly  = false;
 let favScales      = JSON.parse(localStorage.getItem(STORAGE_FAV_SCALES) || '{}');
 let excl           = JSON.parse(localStorage.getItem(STORAGE_EXCL) || '{}');
+let authToken      = localStorage.getItem(STORAGE_AUTH_TOKEN) || null;
+let authName       = localStorage.getItem(STORAGE_AUTH_NAME) || null;
+let authCollection = JSON.parse(localStorage.getItem(STORAGE_AUTH_COLLECTION) || 'null');
+let editingRecipeId = null; // null while adding a new recipe; set to an id while editing
 
 // ---- DOM ----
 const screenHome    = document.getElementById('screen-home');
@@ -38,6 +46,12 @@ const loadingOverlay = document.getElementById('loading-overlay');
 const recipeContent = document.getElementById('recipe-content');
 const searchInput    = document.getElementById('search-input');
 const btnClearSearch = document.getElementById('btn-clear-search');
+const btnAccount     = document.getElementById('btn-account');
+const btnAddRecipe   = document.getElementById('btn-add-recipe');
+const btnEditRecipe  = document.getElementById('btn-edit-recipe');
+const btnDeleteRecipe = document.getElementById('btn-delete-recipe');
+const screenLogin    = document.getElementById('screen-login');
+const screenEdit     = document.getElementById('screen-edit');
 
 // ---- Init ----
 window.addEventListener('load', init);
@@ -58,6 +72,7 @@ async function init() {
   }
   setupInstallPrompt();
   updateClearFavsVisibility();
+  updateAuthUI();
 }
 
 // ---- Print (opens a real Safari tab, not our own webview — calling
@@ -499,7 +514,7 @@ async function fetchFromWeb() {
   restoreBanner.classList.add('hidden');
 
   try {
-    const res  = await fetch(`${API_URL}?action=getAllRecipes`);
+    const res  = await fetch(`${API_URL}?action=getAllRecipes&collection=${COLLECTION}`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
 
@@ -682,6 +697,7 @@ function openRecipe(recipe) {
 
   renderRecipe();
   updateHeartIcon();
+  updateEditButtonsVisibility();
 
   // Slide transition
   screenHome.classList.add('slide-out');
@@ -1082,3 +1098,352 @@ function setupInstallPrompt() {
     });
   });
 }
+
+// ============================================
+// AUTH
+// ============================================
+
+function isLoggedIn() {
+  return !!authToken;
+}
+
+function canEdit() {
+  return isLoggedIn() && (authCollection === null || authCollection === COLLECTION);
+}
+
+function updateAuthUI() {
+  btnAccount.title = isLoggedIn() ? `Log out (${authName || 'account'})` : 'Log in';
+  btnAccount.style.color = isLoggedIn() ? '#C4A35A' : '';
+  btnAddRecipe.classList.toggle('hidden', !canEdit());
+  updateEditButtonsVisibility();
+}
+
+function updateEditButtonsVisibility() {
+  const show = canEdit() && !!currentRecipe;
+  btnEditRecipe.classList.toggle('hidden', !show);
+  btnDeleteRecipe.classList.toggle('hidden', !show);
+}
+
+function openLoginScreen() {
+  document.getElementById('login-error').classList.add('hidden');
+  document.getElementById('login-username').value = '';
+  document.getElementById('login-password').value = '';
+  screenLogin.classList.add('active');
+}
+
+function closeLoginScreen() {
+  screenLogin.classList.remove('active');
+}
+
+async function doLogin() {
+  const username = document.getElementById('login-username').value.trim();
+  const password = document.getElementById('login-password').value;
+  const errorEl  = document.getElementById('login-error');
+  errorEl.classList.add('hidden');
+
+  if (!username || !password) {
+    errorEl.textContent = 'Enter both username and password.';
+    errorEl.classList.remove('hidden');
+    return;
+  }
+
+  try {
+    const res = await fetch(`${API_URL}?action=login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Login failed');
+
+    authToken      = data.token;
+    authName       = data.displayName || username;
+    authCollection = data.collection ?? null;
+    localStorage.setItem(STORAGE_AUTH_TOKEN, authToken);
+    localStorage.setItem(STORAGE_AUTH_NAME, authName);
+    localStorage.setItem(STORAGE_AUTH_COLLECTION, JSON.stringify(authCollection));
+
+    closeLoginScreen();
+    updateAuthUI();
+    showToast(`Welcome, ${authName}!`);
+  } catch (err) {
+    errorEl.textContent = err.message || 'Login failed.';
+    errorEl.classList.remove('hidden');
+  }
+}
+
+function doLogout() {
+  const token = authToken;
+  authToken = null;
+  authName = null;
+  authCollection = null;
+  localStorage.removeItem(STORAGE_AUTH_TOKEN);
+  localStorage.removeItem(STORAGE_AUTH_NAME);
+  localStorage.removeItem(STORAGE_AUTH_COLLECTION);
+  updateAuthUI();
+  showToast('Logged out');
+
+  if (token) {
+    fetch(`${API_URL}?action=logout`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token })
+    }).catch(() => {});
+  }
+}
+
+btnAccount.addEventListener('click', () => {
+  if (isLoggedIn()) {
+    if (confirm(`Log out ${authName || ''}?`.trim())) doLogout();
+  } else {
+    openLoginScreen();
+  }
+});
+
+document.getElementById('btn-login-back').addEventListener('click', closeLoginScreen);
+document.getElementById('btn-login-submit').addEventListener('click', doLogin);
+document.getElementById('login-password').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doLogin();
+});
+
+// ============================================
+// RECIPE EDITOR (add / edit / delete)
+// ============================================
+
+function makeIngredientRow(ing) {
+  const wrap = document.createElement('div');
+  wrap.className = 'ingredient-row';
+  const qty = ing && ing.quantity !== undefined && ing.quantity !== null ? String(ing.quantity) : '';
+  wrap.innerHTML = `
+    <div class="ingredient-row-fields">
+      <input type="text" class="form-input qty-input" placeholder="Qty" value="${escHtml(qty)}">
+      <input type="text" class="form-input unit-input" placeholder="Unit" value="${escHtml(ing?.unit || '')}">
+      <input type="text" class="form-input" placeholder="Ingredient name" value="${escHtml(ing?.ingredient || '')}">
+      <button type="button" class="btn-remove-row" aria-label="Remove ingredient">×</button>
+    </div>
+    <input type="text" class="form-input ingredient-notes-input" placeholder="Notes (optional)" value="${escHtml(ing?.notes || '')}">
+  `;
+  wrap.querySelector('.btn-remove-row').addEventListener('click', () => wrap.remove());
+  return wrap;
+}
+
+function makeStepRow(stepText) {
+  const row = document.createElement('div');
+  row.className = 'step-row';
+  row.innerHTML = `
+    <div class="step-number-badge"></div>
+    <textarea class="form-textarea" rows="2" placeholder="Step instructions">${escHtml(stepText || '')}</textarea>
+    <button type="button" class="btn-remove-row" aria-label="Remove step">×</button>
+  `;
+  row.querySelector('.btn-remove-row').addEventListener('click', () => {
+    row.remove();
+    renumberSteps();
+  });
+  return row;
+}
+
+function renumberSteps() {
+  document.querySelectorAll('#step-rows .step-number-badge').forEach((el, i) => {
+    el.textContent = `${i + 1}.`;
+  });
+}
+
+function renderIngredientRows(ingredients) {
+  const container = document.getElementById('ingredient-rows');
+  container.innerHTML = '';
+  const list = ingredients && ingredients.length ? ingredients : [null];
+  list.forEach(ing => container.appendChild(makeIngredientRow(ing)));
+}
+
+function renderStepRows(steps) {
+  const container = document.getElementById('step-rows');
+  container.innerHTML = '';
+  const list = steps && steps.length ? steps : [''];
+  list.forEach(step => container.appendChild(makeStepRow(step)));
+  renumberSteps();
+}
+
+document.getElementById('btn-add-ingredient').addEventListener('click', () => {
+  document.getElementById('ingredient-rows').appendChild(makeIngredientRow(null));
+});
+
+document.getElementById('btn-add-step').addEventListener('click', () => {
+  document.getElementById('step-rows').appendChild(makeStepRow(''));
+  renumberSteps();
+});
+
+function openAddRecipeForm() {
+  editingRecipeId = null;
+  document.getElementById('edit-screen-title').textContent = 'Add Recipe';
+  document.getElementById('btn-edit-delete').classList.add('hidden');
+  document.getElementById('edit-error').classList.add('hidden');
+  document.getElementById('field-name').value = '';
+  document.getElementById('field-category').value = '';
+  document.getElementById('field-servings').value = '';
+  document.getElementById('field-tags').value = '';
+  document.getElementById('field-prep-time').value = '';
+  document.getElementById('field-cook-time').value = '';
+  document.getElementById('field-total-time').value = '';
+  document.getElementById('field-tested').checked = false;
+  document.getElementById('field-story').value = '';
+  document.getElementById('field-notes').value = '';
+  document.getElementById('field-nutrition').value = '';
+  renderIngredientRows([]);
+  renderStepRows([]);
+  screenEdit.classList.add('active');
+}
+
+function openEditRecipeForm(recipe) {
+  editingRecipeId = recipe.id;
+  document.getElementById('edit-screen-title').textContent = 'Edit Recipe';
+  document.getElementById('btn-edit-delete').classList.remove('hidden');
+  document.getElementById('edit-error').classList.add('hidden');
+  document.getElementById('field-name').value = recipe.name || '';
+  document.getElementById('field-category').value = recipe.category || '';
+  document.getElementById('field-servings').value = recipe.baseServings || '';
+  document.getElementById('field-tags').value = recipe.tags || '';
+  document.getElementById('field-prep-time').value = recipe.prepTime || '';
+  document.getElementById('field-cook-time').value = recipe.cookTime || '';
+  document.getElementById('field-total-time').value = recipe.totalTime || '';
+  document.getElementById('field-tested').checked = !!recipe.tested;
+  document.getElementById('field-story').value = recipe.story || '';
+  document.getElementById('field-notes').value = recipe.notes || '';
+  document.getElementById('field-nutrition').value = recipe.nutrition || '';
+  renderIngredientRows(recipe.ingredients || []);
+  renderStepRows(recipe.steps || []);
+  screenEdit.classList.add('active');
+}
+
+function closeEditForm() {
+  screenEdit.classList.remove('active');
+}
+
+function collectRecipeFromForm() {
+  const ingredients = [...document.querySelectorAll('#ingredient-rows .ingredient-row')].map(row => {
+    const inputs = row.querySelectorAll('.ingredient-row-fields input');
+    const qtyRaw = inputs[0].value.trim();
+    return {
+      quantity: qtyRaw === '' ? '' : parseFloat(qtyRaw),
+      unit: inputs[1].value.trim(),
+      ingredient: inputs[2].value.trim(),
+      notes: row.querySelector('.ingredient-notes-input').value.trim()
+    };
+  }).filter(ing => ing.ingredient !== '');
+
+  const steps = [...document.querySelectorAll('#step-rows .step-row textarea')]
+    .map(t => t.value.trim())
+    .filter(Boolean);
+
+  const servingsRaw = document.getElementById('field-servings').value;
+
+  return {
+    name: document.getElementById('field-name').value.trim(),
+    collection: COLLECTION,
+    category: document.getElementById('field-category').value.trim() || null,
+    baseServings: servingsRaw ? parseInt(servingsRaw, 10) : null,
+    tags: document.getElementById('field-tags').value.split(',').map(t => t.trim()).filter(Boolean),
+    prepTime: document.getElementById('field-prep-time').value.trim() || null,
+    cookTime: document.getElementById('field-cook-time').value.trim() || null,
+    totalTime: document.getElementById('field-total-time').value.trim() || null,
+    tested: document.getElementById('field-tested').checked,
+    story: document.getElementById('field-story').value.trim() || null,
+    notes: document.getElementById('field-notes').value.trim() || null,
+    nutrition: document.getElementById('field-nutrition').value.trim() || null,
+    ingredients,
+    steps
+  };
+}
+
+async function saveRecipe() {
+  const errorEl = document.getElementById('edit-error');
+  errorEl.classList.add('hidden');
+
+  const payload = collectRecipeFromForm();
+  if (!payload.name) {
+    errorEl.textContent = 'Recipe name is required.';
+    errorEl.classList.remove('hidden');
+    return;
+  }
+
+  const action = editingRecipeId ? 'updateRecipe' : 'addRecipe';
+  if (editingRecipeId) payload.id = editingRecipeId;
+
+  try {
+    const res = await fetch(`${API_URL}?action=${action}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authToken}`
+      },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      if (res.status === 401) {
+        showToast('Your session expired — please log in again.');
+        doLogout();
+        closeEditForm();
+        return;
+      }
+      throw new Error(data.error || 'Save failed');
+    }
+
+    const savedId = editingRecipeId || data.id;
+    await fetchFromWeb();
+    closeEditForm();
+    showToast('Recipe saved');
+
+    const saved = allData.recipes.find(r => r.id === savedId);
+    if (saved) openRecipe(saved);
+  } catch (err) {
+    errorEl.textContent = err.message || 'Save failed.';
+    errorEl.classList.remove('hidden');
+  }
+}
+
+async function deleteRecipe(id) {
+  if (!confirm('Delete this recipe? This cannot be undone.')) return;
+
+  try {
+    const res = await fetch(`${API_URL}?action=deleteRecipe`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authToken}`
+      },
+      body: JSON.stringify({ id })
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      if (res.status === 401) {
+        showToast('Your session expired — please log in again.');
+        doLogout();
+        return;
+      }
+      throw new Error(data.error || 'Delete failed');
+    }
+
+    await fetchFromWeb();
+    closeEditForm();
+    goHome();
+    showToast('Recipe deleted');
+  } catch (err) {
+    showToast(err.message || 'Delete failed.');
+  }
+}
+
+btnAddRecipe.addEventListener('click', openAddRecipeForm);
+btnEditRecipe.addEventListener('click', () => {
+  if (currentRecipe) openEditRecipeForm(currentRecipe);
+});
+btnDeleteRecipe.addEventListener('click', () => {
+  if (currentRecipe) deleteRecipe(currentRecipe.id);
+});
+
+document.getElementById('btn-edit-back').addEventListener('click', closeEditForm);
+document.getElementById('btn-edit-save').addEventListener('click', saveRecipe);
+document.getElementById('btn-edit-delete').addEventListener('click', () => {
+  if (editingRecipeId) deleteRecipe(editingRecipeId);
+});

@@ -1,4 +1,4 @@
-const CACHE = 'sfc-v20';
+const CACHE = 'sfc-v21';
 const ASSETS = [
   './',
   './index.html',
@@ -24,11 +24,16 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
-  // Network first for API calls
-  if (e.request.url.includes('script.google.com')) {
-    e.respondWith(
-      fetch(e.request).catch(() => new Response('{}', { headers: { 'Content-Type': 'application/json' }}))
-    );
+  // Network first for API reads, with an empty-recipes fallback when offline.
+  // Writes (login/add/update/delete are all POST) are left untouched so a
+  // real network failure surfaces as a real error instead of a silently
+  // "successful" empty response.
+  if (e.request.url.includes('seniorfamily.org/api/')) {
+    if (e.request.method === 'GET') {
+      e.respondWith(
+        fetch(e.request).catch(() => new Response('{"recipes":[]}', { headers: { 'Content-Type': 'application/json' }}))
+      );
+    }
     return;
   }
 
