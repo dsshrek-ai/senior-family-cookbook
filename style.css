@@ -847,3 +847,190 @@ html, body {
   color: var(--green);
 }
 
+/* ============ FORMS (login / add-edit recipe) ============ */
+.form-main {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 20px 16px;
+  padding-bottom: calc(32px + var(--safe-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.form-row {
+  display: flex;
+  gap: 12px;
+}
+
+.form-row .form-group {
+  flex: 1;
+  min-width: 0;
+}
+
+.form-input,
+.form-textarea {
+  width: 100%;
+  background: var(--white);
+  border: 1.5px solid var(--cream-dark);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  font-size: 15px;
+  font-family: var(--font-body);
+  color: var(--text-dark);
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.form-textarea {
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.form-input:focus,
+.form-textarea:focus {
+  outline: none;
+  border-color: var(--green);
+  box-shadow: 0 0 0 3px rgba(61,90,62,0.15);
+}
+
+.form-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--text-mid);
+}
+
+.form-checkbox input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--green);
+}
+
+.form-error {
+  background: #FDECEC;
+  border-left: 4px solid #C0392B;
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  font-size: 13px;
+  color: #C0392B;
+}
+
+.form-error.hidden { display: none; }
+
+.btn-secondary {
+  background: var(--white);
+  color: var(--green);
+  border: 1.5px solid var(--green);
+  border-radius: var(--radius-md);
+  padding: 14px 20px;
+  font-size: 16px;
+  font-family: var(--font-body);
+  font-weight: 600;
+  cursor: pointer;
+  width: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.btn-secondary.hidden { display: none; }
+.btn-secondary:active { background: var(--cream-dark); }
+
+.btn-danger {
+  background: none;
+  color: #C0392B;
+  border: 1.5px solid #C0392B;
+  border-radius: var(--radius-md);
+  padding: 14px 20px;
+  font-size: 15px;
+  font-family: var(--font-body);
+  font-weight: 600;
+  cursor: pointer;
+  width: 100%;
+  margin-top: 8px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.btn-danger.hidden { display: none; }
+.btn-danger:active { background: #FDECEC; }
+
+.icon-btn.hidden { display: none; }
+
+/* ---- Ingredient / step rows ---- */
+.ingredient-row {
+  margin-bottom: 10px;
+}
+
+.ingredient-row-fields {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.ingredient-row-fields .form-input { flex: 1; min-width: 0; }
+.ingredient-row-fields .qty-input  { flex: 0 0 60px; }
+.ingredient-row-fields .unit-input { flex: 0 0 80px; }
+
+.ingredient-notes-input {
+  margin-top: 6px;
+}
+
+.step-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+  align-items: flex-start;
+}
+
+.step-row .step-number-badge {
+  flex: 0 0 24px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-light);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.step-row .form-textarea { flex: 1; min-width: 0; }
+
+.btn-remove-row {
+  flex: 0 0 auto;
+  background: var(--cream-dark);
+  border: none;
+  color: var(--text-mid);
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-sm);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.btn-add-row {
+  background: none;
+  border: none;
+  color: var(--green);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--font-body);
+  cursor: pointer;
+  padding: 4px 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
