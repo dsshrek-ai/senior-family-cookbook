@@ -1051,7 +1051,9 @@ html, body {
 }
 
 .shop-item-row {
-  margin-bottom: 10px;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid rgba(44,44,44,0.15);
 }
 
 .shop-item-top {

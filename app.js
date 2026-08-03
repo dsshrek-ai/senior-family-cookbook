@@ -582,7 +582,11 @@ function makeShoppingListRow(item, index) {
 }
 
 function printCurrentShoppingList() {
-  if (shoppingList.length === 0) { showToast('Shopping list is empty'); return; }
+  // Items with no quantity or a quantity of 0 are treated as "don't need this
+  // one" and left off the printed list, without removing them from the
+  // editable screen — lets you zero something out instead of deleting it.
+  const printable = shoppingList.filter(item => item.qty !== '' && item.qty !== null && item.qty !== undefined && item.qty !== 0);
+  if (printable.length === 0) { showToast('Shopping list is empty'); return; }
 
   const favRecipes = currentFavRecipes();
   const recipeSummary = favRecipes.map(r => {
@@ -592,16 +596,15 @@ function printCurrentShoppingList() {
 
   let rows = '';
   let lastDept = null;
-  shoppingList.forEach(item => {
+  printable.forEach(item => {
     const dept = item.dept || 'Added Items';
     if (dept !== lastDept) {
       rows += `<tr class="dept-row"><td colspan="4">${dept}</td></tr>`;
       lastDept = dept;
     }
-    const qtyStr = item.qty !== '' && item.qty !== undefined && item.qty !== null ? formatQty(item.qty) : '';
     rows += `<tr>
       <td class="chk-col">☐</td>
-      <td class="qty-col">${qtyStr}</td>
+      <td class="qty-col">${formatQty(item.qty)}</td>
       <td class="unit-col">${item.unit || ''}</td>
       <td class="ing-col">${item.name}</td>
     </tr>`;
