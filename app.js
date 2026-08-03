@@ -13,6 +13,7 @@ const STORAGE_EXCL     = 'sfcExcluded';
 const STORAGE_AUTH_TOKEN      = 'sfcAuthToken';
 const STORAGE_AUTH_NAME       = 'sfcAuthName';
 const STORAGE_AUTH_COLLECTION = 'sfcAuthCollection';
+const STORAGE_SHOPPING_LIST   = 'sfcShoppingList';
 
 // ---- State ----
 let allData        = null;   // { recipeList, recipes }
@@ -29,6 +30,7 @@ let authToken      = localStorage.getItem(STORAGE_AUTH_TOKEN) || null;
 let authName       = localStorage.getItem(STORAGE_AUTH_NAME) || null;
 let authCollection = JSON.parse(localStorage.getItem(STORAGE_AUTH_COLLECTION) || 'null');
 let editingRecipeId = null; // null while adding a new recipe; set to an id while editing
+let shoppingList    = []; // current editable list: [{ name, qty, unit, dept }]
 
 // ---- DOM ----
 const screenHome    = document.getElementById('screen-home');
@@ -52,6 +54,7 @@ const btnEditRecipe  = document.getElementById('btn-edit-recipe');
 const btnDeleteRecipe = document.getElementById('btn-delete-recipe');
 const screenLogin    = document.getElementById('screen-login');
 const screenEdit     = document.getElementById('screen-edit');
+const screenShoppingList = document.getElementById('screen-shopping-list');
 
 // ---- Init ----
 window.addEventListener('load', init);
@@ -438,17 +441,150 @@ function combineIngredients(recipes) {
   });
 }
 
-function printCombinedShoppingList() {
-  if (favorites.size === 0) { showToast('No favorites saved'); return; }
-
-  const favRecipes = [...favorites]
+function currentFavRecipes() {
+  return [...favorites]
     .map(name => allData.recipes.find(r => r.name === name))
     .filter(Boolean)
     .sort((a, b) => a.name.localeCompare(b.name));
+}
 
-  const combined = combineIngredients(favRecipes);
+function buildFreshShoppingList() {
+  const combined = combineIngredients(currentFavRecipes());
+  return combined.map(item => ({
+    name: item.name,
+    qty: item.qty !== undefined ? Math.round(item.qty * 100) / 100 : '',
+    unit: item.unit || '',
+    dept: item.dept
+  }));
+}
 
-  // Recipe summary for header
+function saveShoppingList() {
+  localStorage.setItem(STORAGE_SHOPPING_LIST, JSON.stringify(shoppingList));
+}
+
+function openShoppingListScreen() {
+  if (favorites.size === 0) { showToast('No favorites saved'); return; }
+
+  const stored = localStorage.getItem(STORAGE_SHOPPING_LIST);
+  if (stored) {
+    try {
+      shoppingList = JSON.parse(stored);
+    } catch (e) {
+      shoppingList = buildFreshShoppingList();
+    }
+  } else {
+    shoppingList = buildFreshShoppingList();
+  }
+  saveShoppingList();
+
+  renderShoppingListScreen();
+  screenShoppingList.classList.add('active');
+}
+
+function closeShoppingListScreen() {
+  screenShoppingList.classList.remove('active');
+}
+
+function resetShoppingListToAutoCombined() {
+  if (!confirm('Discard your edits and rebuild the list from your current favorites?')) return;
+  shoppingList = buildFreshShoppingList();
+  saveShoppingList();
+  renderShoppingListScreen();
+  showToast('Shopping list reset');
+}
+
+function addShoppingListItem() {
+  shoppingList.push({ name: '', qty: '', unit: '', dept: null });
+  saveShoppingList();
+  renderShoppingListScreen();
+  const nameInputs = document.querySelectorAll('.shop-item-name');
+  const last = nameInputs[nameInputs.length - 1];
+  if (last) last.focus();
+}
+
+function removeShoppingListItem(index) {
+  shoppingList.splice(index, 1);
+  saveShoppingList();
+  renderShoppingListScreen();
+}
+
+function bumpShoppingListQty(index, delta) {
+  const current = parseFloat(shoppingList[index].qty);
+  const next = (isNaN(current) ? 0 : current) + delta;
+  shoppingList[index].qty = Math.max(0, Math.round(next * 100) / 100);
+  saveShoppingList();
+  renderShoppingListScreen();
+}
+
+function renderShoppingListScreen() {
+  const container = document.getElementById('shopping-list-content');
+  container.innerHTML = '';
+
+  const grouped = [];
+  DEPT_ORDER.forEach(dept => {
+    const items = shoppingList
+      .map((item, index) => ({ item, index }))
+      .filter(({ item }) => item.dept === dept);
+    if (items.length) grouped.push({ dept, items });
+  });
+  const addedItems = shoppingList
+    .map((item, index) => ({ item, index }))
+    .filter(({ item }) => !item.dept);
+  if (addedItems.length) grouped.push({ dept: 'Added Items', items: addedItems });
+
+  grouped.forEach(({ dept, items }) => {
+    const header = document.createElement('div');
+    header.className = 'shop-dept-header';
+    header.textContent = dept;
+    container.appendChild(header);
+
+    items.forEach(({ item, index }) => {
+      container.appendChild(makeShoppingListRow(item, index));
+    });
+  });
+}
+
+function makeShoppingListRow(item, index) {
+  const row = document.createElement('div');
+  row.className = 'shop-item-row';
+  row.innerHTML = `
+    <div class="shop-item-top">
+      <div class="qty-stepper">
+        <button type="button" class="qty-step-btn qty-step-down" aria-label="Decrease quantity">−</button>
+        <input type="text" class="qty-input" inputmode="decimal" value="${escHtml(String(item.qty ?? ''))}">
+        <button type="button" class="qty-step-btn qty-step-up" aria-label="Increase quantity">+</button>
+      </div>
+      <input type="text" class="form-input unit-input-small" placeholder="Unit" value="${escHtml(item.unit || '')}">
+      <button type="button" class="btn-remove-row" aria-label="Remove item">×</button>
+    </div>
+    <input type="text" class="form-input shop-item-name" placeholder="Item name" value="${escHtml(item.name || '')}">
+  `;
+
+  row.querySelector('.qty-step-down').addEventListener('click', () => bumpShoppingListQty(index, -1));
+  row.querySelector('.qty-step-up').addEventListener('click', () => bumpShoppingListQty(index, 1));
+  row.querySelector('.btn-remove-row').addEventListener('click', () => removeShoppingListItem(index));
+
+  row.querySelector('.qty-input').addEventListener('change', e => {
+    const val = parseFloat(e.target.value);
+    shoppingList[index].qty = e.target.value.trim() === '' ? '' : (isNaN(val) ? shoppingList[index].qty : val);
+    saveShoppingList();
+  });
+  row.querySelector('.unit-input-small').addEventListener('change', e => {
+    shoppingList[index].unit = e.target.value.trim();
+    saveShoppingList();
+  });
+  row.querySelector('.shop-item-name').addEventListener('change', e => {
+    shoppingList[index].name = e.target.value.trim();
+    saveShoppingList();
+  });
+
+  return row;
+}
+
+function printCurrentShoppingList() {
+  if (shoppingList.length === 0) { showToast('Shopping list is empty'); return; }
+
+  const favRecipes = currentFavRecipes();
   const recipeSummary = favRecipes.map(r => {
     const servings = favScales[r.name] || r.baseServings;
     return `${r.name} (${servings} servings)`;
@@ -456,29 +592,28 @@ function printCombinedShoppingList() {
 
   let rows = '';
   let lastDept = null;
-  combined.forEach(item => {
-    if (item.dept !== lastDept) {
-      rows += `<tr class="dept-row"><td colspan="4">${item.dept}</td></tr>`;
-      lastDept = item.dept;
+  shoppingList.forEach(item => {
+    const dept = item.dept || 'Added Items';
+    if (dept !== lastDept) {
+      rows += `<tr class="dept-row"><td colspan="4">${dept}</td></tr>`;
+      lastDept = dept;
     }
-    const qtyStr = item.qty !== undefined ? formatQty(Math.round(item.qty * 100) / 100) : '';
-    const approxMark = item.approx ? '<span class="approx">~</span>' : '';
+    const qtyStr = item.qty !== '' && item.qty !== undefined && item.qty !== null ? formatQty(item.qty) : '';
     rows += `<tr>
       <td class="chk-col">☐</td>
-      <td class="qty-col">${approxMark}${qtyStr}</td>
+      <td class="qty-col">${qtyStr}</td>
       <td class="unit-col">${item.unit || ''}</td>
       <td class="ing-col">${item.name}</td>
     </tr>`;
   });
 
   const html = `
-    <h1>Combined Shopping List</h1>
+    <h1>Shopping List</h1>
     <div class="recipes-summary"><strong>Recipes included:</strong>${recipeSummary}</div>
     <table>${rows}</table>
-    <p class="approx-note">~ Quantity is approximate (volume + weight combined using pint = pound)<br>Checked-off ingredients in recipes are excluded from this list.</p>
   `;
 
-  openPrintWindow('Combined Shopping List', html);
+  openPrintWindow('Shopping List', html);
 }
 
 function registerSW() {
@@ -667,7 +802,11 @@ document.getElementById('btn-share-recipe').addEventListener('click', shareRecip
 document.getElementById('btn-share-app').addEventListener('click', shareApp);
 document.getElementById('btn-favorite').addEventListener('click', toggleFavorite);
 document.getElementById('btn-print-favs').addEventListener('click', printAllFavorites);
-document.getElementById('btn-combined-shopping').addEventListener('click', printCombinedShoppingList);
+document.getElementById('btn-combined-shopping').addEventListener('click', openShoppingListScreen);
+document.getElementById('btn-shopping-list-back').addEventListener('click', closeShoppingListScreen);
+document.getElementById('btn-shopping-list-reset').addEventListener('click', resetShoppingListToAutoCombined);
+document.getElementById('btn-print-shopping-list').addEventListener('click', printCurrentShoppingList);
+document.getElementById('btn-add-shopping-item').addEventListener('click', addShoppingListItem);
 
 document.getElementById('btn-favs').addEventListener('click', () => {
   favoritesOnly = !favoritesOnly;
