@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#2F5D62">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="LL">
+  <meta name="description" content="Living Lean - Low-carb, low-cal recipes at your fingertips">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="../icon-192.png">
+  <title>Living Lean</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Source+Sans+3:wght@300;400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- SCREEN 1: Home -->
+  <div id="screen-home" class="screen active">
+    <header class="app-header">
+      <div class="header-content">
+        <div class="header-title">
+          <span class="header-icon">🥗</span>
+          <div>
+            <h1>Living Lean</h1>
+            <p id="last-updated" class="last-updated"></p>
+          </div>
+        </div>
+        <div class="header-actions">
+          <button id="btn-account" class="icon-btn" title="Log in" aria-label="Account">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+            </svg>
+          </button>
+          <button id="btn-share-app" class="icon-btn" title="Share cookbook" aria-label="Share cookbook">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+            </svg>
+          </button>
+          <button id="btn-refresh" class="icon-btn" title="Refresh recipes" aria-label="Refresh recipes">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+              <path d="M21 3v5h-5"/>
+              <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+              <path d="M8 16H3v5"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="home-main">
+      <div id="status-bar" class="status-bar hidden"></div>
+
+      <div id="restore-banner" class="restore-banner hidden">
+        <span>⚠️ Refresh failed — using cached data</span>
+        <button id="btn-restore">Restore backup</button>
+      </div>
+
+      <!-- SEARCH BOX -->
+      <div class="search-section">
+        <div class="search-wrapper">
+          <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"/>
+            <path d="m21 21-4.35-4.35"/>
+          </svg>
+          <input type="text" id="search-input" placeholder="Search recipes, ingredients, tags…" autocomplete="off" autocorrect="off" spellcheck="false">
+          <button id="btn-clear-search" class="clear-btn hidden" aria-label="Clear search">×</button>
+        </div>
+      </div>
+
+      <!-- RECIPE SELECT (now above category filter) -->
+      <div class="recipe-select-section">
+        <label class="filter-label" for="recipe-select">Select a recipe</label>
+        <div class="select-wrapper">
+          <select id="recipe-select">
+            <option value="">— Choose a recipe —</option>
+          </select>
+          <svg class="select-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+      </div>
+
+      <!-- CATEGORY FILTER (now below recipe select) -->
+      <div class="filter-section">
+        <label class="filter-label" for="tag-select">Filter by category</label>
+        <div class="select-wrapper">
+          <select id="tag-select">
+            <option value="all">— Select Category —</option>
+          </select>
+          <svg class="select-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+      </div>
+
+      <!-- QUICK FILTER -->
+      <div class="quick-filter-section">
+        <button id="btn-favs" class="btn-quick-filter">♥ Favorites</button>
+      </div>
+      <div class="clear-favs-section hidden" id="clear-favs-section">
+        <button id="btn-print-favs" class="btn-print-favs">🖨 Print all favorites</button>
+        <button id="btn-combined-shopping" class="btn-print-favs">🛒 Combined Shopping List</button>
+        <button id="btn-clear-favs" class="btn-clear-favs">Clear all favorites</button>
+      </div>
+
+      <button id="btn-load" class="btn-primary" disabled>
+        Open Recipe
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+      </button>
+
+      <button id="btn-add-recipe" class="btn-secondary hidden">
+        + Add a New Recipe
+      </button>
+
+      <div id="loading-overlay" class="loading-overlay hidden">
+        <div class="spinner"></div>
+        <p>Loading recipes…</p>
+      </div>
+    </main>
+  </div>
+
+  <!-- SCREEN 2: Recipe -->
+  <div id="screen-recipe" class="screen">
+    <header class="app-header recipe-header">
+      <div class="header-content">
+        <button id="btn-back" class="icon-btn" aria-label="Back to recipes">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+        </button>
+        <span class="header-back-label">Recipes</span>
+        <div class="header-actions">
+          <button id="btn-edit-recipe" class="icon-btn hidden" aria-label="Edit recipe" title="Edit recipe">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+          </button>
+          <button id="btn-delete-recipe" class="icon-btn hidden" aria-label="Delete recipe" title="Delete recipe">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+          </button>
+          <button id="btn-favorite" class="icon-btn" aria-label="Favorite recipe" title="Favorite">
+            <svg id="icon-heart" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+            </svg>
+          </button>
+          <button id="btn-share-recipe" class="icon-btn" aria-label="Share recipe" title="Share recipe">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+            </svg>
+          </button>
+          <button id="btn-print-shopping" class="icon-btn" aria-label="Print shopping list" title="Shopping list">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+          </button>
+          <button id="btn-print" class="icon-btn" aria-label="Print recipe" title="Print">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="recipe-main" id="recipe-content">
+      <!-- Dynamically populated -->
+    </main>
+  </div>
+
+  <!-- SCREEN 3: Login -->
+  <div id="screen-login" class="screen">
+    <header class="app-header recipe-header">
+      <div class="header-content">
+        <button id="btn-login-back" class="icon-btn" aria-label="Back">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+        </button>
+        <span class="header-back-label">Log In</span>
+        <div class="header-actions"></div>
+      </div>
+    </header>
+    <main class="form-main">
+      <p id="login-error" class="form-error hidden"></p>
+      <div class="form-group">
+        <label class="filter-label" for="login-username">Username</label>
+        <input type="text" id="login-username" class="form-input" autocomplete="username" autocapitalize="off" autocorrect="off">
+      </div>
+      <div class="form-group">
+        <label class="filter-label" for="login-password">Password</label>
+        <input type="password" id="login-password" class="form-input" autocomplete="current-password">
+      </div>
+      <button id="btn-login-submit" class="btn-primary">Log In</button>
+    </main>
+  </div>
+
+  <!-- SCREEN 4: Add/Edit Recipe -->
+  <div id="screen-edit" class="screen">
+    <header class="app-header recipe-header">
+      <div class="header-content">
+        <button id="btn-edit-back" class="icon-btn" aria-label="Cancel">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+        </button>
+        <span class="header-back-label" id="edit-screen-title">Add Recipe</span>
+        <div class="header-actions">
+          <button id="btn-edit-save" class="icon-btn" aria-label="Save recipe" title="Save">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+          </button>
+        </div>
+      </div>
+    </header>
+    <main class="form-main">
+      <p id="edit-error" class="form-error hidden"></p>
+
+      <div class="form-group">
+        <label class="filter-label" for="field-name">Recipe Name</label>
+        <input type="text" id="field-name" class="form-input">
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="filter-label" for="field-category">Category</label>
+          <input type="text" id="field-category" class="form-input" placeholder="Main Dish">
+        </div>
+        <div class="form-group">
+          <label class="filter-label" for="field-servings">Base Servings</label>
+          <input type="number" id="field-servings" class="form-input" min="1">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="filter-label" for="field-tags">Tags (comma separated)</label>
+        <input type="text" id="field-tags" class="form-input" placeholder="Instant Pot, Ground Beef">
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="filter-label" for="field-prep-time">Prep Time</label>
+          <input type="text" id="field-prep-time" class="form-input" placeholder="15 minutes">
+        </div>
+        <div class="form-group">
+          <label class="filter-label" for="field-cook-time">Cook Time</label>
+          <input type="text" id="field-cook-time" class="form-input" placeholder="20 minutes">
+        </div>
+        <div class="form-group">
+          <label class="filter-label" for="field-total-time">Total Time</label>
+          <input type="text" id="field-total-time" class="form-input" placeholder="35 minutes">
+        </div>
+      </div>
+
+      <label class="form-checkbox">
+        <input type="checkbox" id="field-tested">
+        <span>Tested</span>
+      </label>
+
+      <div class="form-group">
+        <div class="form-group-header">
+          <label class="filter-label">Ingredients</label>
+          <button type="button" id="btn-add-ingredient" class="btn-add-row">+ Add Ingredient</button>
+        </div>
+        <div id="ingredient-rows"></div>
+      </div>
+
+      <div class="form-group">
+        <div class="form-group-header">
+          <label class="filter-label">Steps</label>
+          <button type="button" id="btn-add-step" class="btn-add-row">+ Add Step</button>
+        </div>
+        <div id="step-rows"></div>
+      </div>
+
+      <div class="form-group">
+        <label class="filter-label" for="field-story">About This Recipe / History</label>
+        <textarea id="field-story" class="form-textarea" rows="3"></textarea>
+      </div>
+
+      <div class="form-group">
+        <label class="filter-label" for="field-notes">Notes</label>
+        <textarea id="field-notes" class="form-textarea" rows="3"></textarea>
+      </div>
+
+      <div class="form-group">
+        <label class="filter-label" for="field-nutrition">Nutrition</label>
+        <textarea id="field-nutrition" class="form-textarea" rows="2"></textarea>
+      </div>
+
+      <button id="btn-edit-delete" class="btn-danger hidden">Delete Recipe</button>
+    </main>
+  </div>
+
+  <!-- UPDATE BANNER -->
+  <div id="update-banner" class="update-banner hidden">
+    <span>🔄 A new version is available!</span>
+    <button id="btn-update">Update Now</button>
+    <button id="btn-dismiss-update" class="dismiss-update">Later</button>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
