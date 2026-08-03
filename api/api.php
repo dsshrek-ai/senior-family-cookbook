@@ -125,6 +125,25 @@ function shapeRecipe(array $row): array {
 
 // ---- Tag syncing ----
 
+// Title-cases a tag name, except: tokens already fully uppercase (likely
+// acronyms like "BBQ" or "DUP") are left alone, and minor connector words
+// ("and", "of", etc.) stay lowercase unless they're the first word.
+function titleCaseTag(string $name): string {
+  $minorWords = ['and', 'or', 'of', 'the', 'a', 'an', 'in', 'on', 'with', 'for', 'to', 'at', 'by'];
+  $words = preg_split('/\s+/', trim($name));
+  $result = [];
+  foreach ($words as $i => $word) {
+    $letters = preg_replace('/[^A-Za-z]/', '', $word);
+    if ($letters !== '' && $letters === mb_strtoupper($letters, 'UTF-8') && mb_strlen($letters, 'UTF-8') <= 5) {
+      $result[] = $word;
+      continue;
+    }
+    $lower = mb_strtolower($word, 'UTF-8');
+    $result[] = ($i > 0 && in_array($lower, $minorWords, true)) ? $lower : mb_convert_case($word, MB_CASE_TITLE, 'UTF-8');
+  }
+  return implode(' ', $result);
+}
+
 function syncTags(int $recipeId, array $tagNames): void {
   $conn = db();
   $del = $conn->prepare('DELETE FROM recipe_tags WHERE recipe_id = ?');
@@ -137,6 +156,7 @@ function syncTags(int $recipeId, array $tagNames): void {
     if ($name === '') {
       continue;
     }
+    $name = titleCaseTag($name);
 
     $ins = $conn->prepare('INSERT IGNORE INTO tags (name) VALUES (?)');
     $ins->bind_param('s', $name);
