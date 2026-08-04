@@ -30,7 +30,8 @@ let authToken      = localStorage.getItem(STORAGE_AUTH_TOKEN) || null;
 let authName       = localStorage.getItem(STORAGE_AUTH_NAME) || null;
 let authCollection = JSON.parse(localStorage.getItem(STORAGE_AUTH_COLLECTION) || 'null');
 let editingRecipeId = null; // null while adding a new recipe; set to an id while editing
-let shoppingList    = []; // current editable list: [{ name, qty, unit, dept }]
+let shoppingList    = []; // current editable list: [{ name, qty, unit, dept, deptManual, checked }]
+let shoppingMode    = false; // false = edit mode, true = check-off shopping mode
 
 // ---- DOM ----
 const screenHome    = document.getElementById('screen-home');
@@ -454,7 +455,9 @@ function buildFreshShoppingList() {
     name: item.name,
     qty: item.qty !== undefined ? Math.round(item.qty * 100) / 100 : '',
     unit: item.unit || '',
-    dept: item.dept
+    dept: item.dept || 'Other',
+    deptManual: false,
+    checked: false
   }));
 }
 
@@ -477,12 +480,30 @@ function openShoppingListScreen() {
   }
   saveShoppingList();
 
-  renderShoppingListScreen();
+  exitShoppingMode(); // always open into edit mode, with the right buttons visible
   screenShoppingList.classList.add('active');
 }
 
 function closeShoppingListScreen() {
   screenShoppingList.classList.remove('active');
+}
+
+function enterShoppingMode() {
+  shoppingMode = true;
+  document.getElementById('btn-start-shopping').classList.add('hidden');
+  document.getElementById('btn-shopping-list-reset').classList.add('hidden');
+  document.getElementById('btn-add-shopping-item').classList.add('hidden');
+  document.getElementById('btn-back-to-edit').classList.remove('hidden');
+  renderShoppingListScreen();
+}
+
+function exitShoppingMode() {
+  shoppingMode = false;
+  document.getElementById('btn-start-shopping').classList.remove('hidden');
+  document.getElementById('btn-shopping-list-reset').classList.remove('hidden');
+  document.getElementById('btn-add-shopping-item').classList.remove('hidden');
+  document.getElementById('btn-back-to-edit').classList.add('hidden');
+  renderShoppingListScreen();
 }
 
 function resetShoppingListToAutoCombined() {
@@ -494,7 +515,7 @@ function resetShoppingListToAutoCombined() {
 }
 
 function addShoppingListItem() {
-  shoppingList.push({ name: '', qty: '', unit: '', dept: null });
+  shoppingList.push({ name: '', qty: '', unit: '', dept: 'Other', deptManual: false, checked: false });
   saveShoppingList();
   renderShoppingListScreen();
   const nameInputs = document.querySelectorAll('.shop-item-name');
@@ -520,17 +541,29 @@ function renderShoppingListScreen() {
   const container = document.getElementById('shopping-list-content');
   container.innerHTML = '';
 
+  if (shoppingMode) {
+    renderShoppingModeRows(container);
+  } else {
+    renderShoppingListEditRows(container);
+  }
+}
+
+function renderShoppingListEditRows(container) {
   const grouped = [];
   DEPT_ORDER.forEach(dept => {
     const items = shoppingList
       .map((item, index) => ({ item, index }))
-      .filter(({ item }) => item.dept === dept);
+      .filter(({ item }) => (item.dept || 'Other') === dept);
     if (items.length) grouped.push({ dept, items });
   });
-  const addedItems = shoppingList
-    .map((item, index) => ({ item, index }))
-    .filter(({ item }) => !item.dept);
-  if (addedItems.length) grouped.push({ dept: 'Added Items', items: addedItems });
+
+  if (grouped.length === 0) {
+    const empty = document.createElement('p');
+    empty.className = 'shop-empty-msg';
+    empty.textContent = 'Your shopping list is empty.';
+    container.appendChild(empty);
+    return;
+  }
 
   grouped.forEach(({ dept, items }) => {
     const header = document.createElement('div');
@@ -547,6 +580,10 @@ function renderShoppingListScreen() {
 function makeShoppingListRow(item, index) {
   const row = document.createElement('div');
   row.className = 'shop-item-row';
+  const currentDept = item.dept || 'Other';
+  const deptOptions = DEPT_ORDER.map(dept =>
+    `<option value="${dept}"${currentDept === dept ? ' selected' : ''}>${dept}</option>`
+  ).join('');
   row.innerHTML = `
     <div class="shop-item-top">
       <div class="qty-stepper">
@@ -558,6 +595,10 @@ function makeShoppingListRow(item, index) {
       <button type="button" class="btn-remove-row" aria-label="Remove item">×</button>
     </div>
     <input type="text" class="form-input shop-item-name" placeholder="Item name" value="${escHtml(item.name || '')}">
+    <div class="select-wrapper dept-select-wrapper">
+      <select class="dept-select">${deptOptions}</select>
+      <svg class="select-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
   `;
 
   row.querySelector('.qty-step-down').addEventListener('click', () => bumpShoppingListQty(index, -1));
@@ -574,18 +615,97 @@ function makeShoppingListRow(item, index) {
     saveShoppingList();
   });
   row.querySelector('.shop-item-name').addEventListener('change', e => {
-    shoppingList[index].name = e.target.value.trim();
+    const name = e.target.value.trim();
+    shoppingList[index].name = name;
+    // Auto-guess the department from the name, unless the user has already
+    // picked one manually for this row. Deliberately NOT a full
+    // renderShoppingListScreen() here: that tears down and rebuilds every
+    // row's DOM, and if the very next thing the user does is tap this row's
+    // department dropdown, the rebuild can detach that select mid-tap and
+    // silently drop the pick. Just sync this one select's displayed value —
+    // the row will snap into its correct department group next time the
+    // screen re-renders for some other reason (add/remove/reset/mode switch).
+    if (!shoppingList[index].deptManual) {
+      shoppingList[index].dept = getDept(name);
+      const deptSelect = row.querySelector('.dept-select');
+      if (deptSelect) deptSelect.value = shoppingList[index].dept;
+    }
     saveShoppingList();
+  });
+  row.querySelector('.dept-select').addEventListener('change', e => {
+    shoppingList[index].dept = e.target.value;
+    shoppingList[index].deptManual = true;
+    saveShoppingList();
+    renderShoppingListScreen();
   });
 
   return row;
 }
 
+// Items with no quantity or a quantity of 0 are treated as "don't need this
+// one" — kept in the editable list (so zeroing out a field isn't the same as
+// deleting the row) but left off the shopping-mode view and printouts.
+function hasShoppableQty(item) {
+  return item.qty !== '' && item.qty !== null && item.qty !== undefined && item.qty !== 0;
+}
+
+// ---- Shopping mode (check items off, tap to strike through & recall) ----
+function renderShoppingModeRows(container) {
+  const withIndex = shoppingList
+    .map((item, index) => ({ item, index }))
+    .filter(({ item }) => hasShoppableQty(item));
+  const unchecked = withIndex.filter(({ item }) => !item.checked);
+  const checked   = withIndex.filter(({ item }) => item.checked);
+
+  if (unchecked.length === 0 && checked.length === 0) {
+    const empty = document.createElement('p');
+    empty.className = 'shop-empty-msg';
+    empty.textContent = 'Your shopping list is empty.';
+    container.appendChild(empty);
+    return;
+  }
+
+  DEPT_ORDER.forEach(dept => {
+    const items = unchecked.filter(({ item }) => (item.dept || 'Other') === dept);
+    if (!items.length) return;
+    const header = document.createElement('div');
+    header.className = 'shop-dept-header';
+    header.textContent = dept;
+    container.appendChild(header);
+    items.forEach(({ item, index }) => container.appendChild(makeShoppingModeRow(item, index)));
+  });
+
+  if (checked.length) {
+    const header = document.createElement('div');
+    header.className = 'shop-dept-header shop-dept-header-done';
+    header.textContent = 'Checked Off';
+    container.appendChild(header);
+    checked.forEach(({ item, index }) => container.appendChild(makeShoppingModeRow(item, index)));
+  }
+}
+
+function makeShoppingModeRow(item, index) {
+  const row = document.createElement('div');
+  row.className = 'shop-mode-item' + (item.checked ? ' checked' : '');
+  const qtyUnit = [item.qty, item.unit]
+    .filter(v => v !== '' && v !== null && v !== undefined)
+    .join(' ');
+  row.innerHTML = `
+    <div class="shop-mode-check"></div>
+    <span class="shop-mode-text">${qtyUnit ? `<strong>${escHtml(String(qtyUnit))}</strong> ` : ''}${escHtml(item.name || '')}</span>
+  `;
+  row.addEventListener('click', () => toggleShoppingItemChecked(index));
+  return row;
+}
+
+function toggleShoppingItemChecked(index) {
+  shoppingList[index].checked = !shoppingList[index].checked;
+  saveShoppingList();
+  renderShoppingListScreen();
+}
+
 function printCurrentShoppingList() {
-  // Items with no quantity or a quantity of 0 are treated as "don't need this
-  // one" and left off the printed list, without removing them from the
-  // editable screen — lets you zero something out instead of deleting it.
-  const printable = shoppingList.filter(item => item.qty !== '' && item.qty !== null && item.qty !== undefined && item.qty !== 0);
+  const printable = shoppingList.filter(hasShoppableQty);
   if (printable.length === 0) { showToast('Shopping list is empty'); return; }
 
   const favRecipes = currentFavRecipes();
@@ -810,6 +930,8 @@ document.getElementById('btn-shopping-list-back').addEventListener('click', clos
 document.getElementById('btn-shopping-list-reset').addEventListener('click', resetShoppingListToAutoCombined);
 document.getElementById('btn-print-shopping-list').addEventListener('click', printCurrentShoppingList);
 document.getElementById('btn-add-shopping-item').addEventListener('click', addShoppingListItem);
+document.getElementById('btn-start-shopping').addEventListener('click', enterShoppingMode);
+document.getElementById('btn-back-to-edit').addEventListener('click', exitShoppingMode);
 
 document.getElementById('btn-favs').addEventListener('click', () => {
   favoritesOnly = !favoritesOnly;
