@@ -617,15 +617,20 @@ function makeShoppingListRow(item, index) {
   row.querySelector('.shop-item-name').addEventListener('change', e => {
     const name = e.target.value.trim();
     shoppingList[index].name = name;
-    saveShoppingList();
     // Auto-guess the department from the name, unless the user has already
-    // picked one manually for this row — re-render so it moves under the
-    // right department header immediately.
+    // picked one manually for this row. Deliberately NOT a full
+    // renderShoppingListScreen() here: that tears down and rebuilds every
+    // row's DOM, and if the very next thing the user does is tap this row's
+    // department dropdown, the rebuild can detach that select mid-tap and
+    // silently drop the pick. Just sync this one select's displayed value —
+    // the row will snap into its correct department group next time the
+    // screen re-renders for some other reason (add/remove/reset/mode switch).
     if (!shoppingList[index].deptManual) {
       shoppingList[index].dept = getDept(name);
-      saveShoppingList();
-      renderShoppingListScreen();
+      const deptSelect = row.querySelector('.dept-select');
+      if (deptSelect) deptSelect.value = shoppingList[index].dept;
     }
+    saveShoppingList();
   });
   row.querySelector('.dept-select').addEventListener('change', e => {
     shoppingList[index].dept = e.target.value;
@@ -637,9 +642,18 @@ function makeShoppingListRow(item, index) {
   return row;
 }
 
+// Items with no quantity or a quantity of 0 are treated as "don't need this
+// one" — kept in the editable list (so zeroing out a field isn't the same as
+// deleting the row) but left off the shopping-mode view and printouts.
+function hasShoppableQty(item) {
+  return item.qty !== '' && item.qty !== null && item.qty !== undefined && item.qty !== 0;
+}
+
 // ---- Shopping mode (check items off, tap to strike through & recall) ----
 function renderShoppingModeRows(container) {
-  const withIndex = shoppingList.map((item, index) => ({ item, index }));
+  const withIndex = shoppingList
+    .map((item, index) => ({ item, index }))
+    .filter(({ item }) => hasShoppableQty(item));
   const unchecked = withIndex.filter(({ item }) => !item.checked);
   const checked   = withIndex.filter(({ item }) => item.checked);
 
@@ -691,10 +705,7 @@ function toggleShoppingItemChecked(index) {
 }
 
 function printCurrentShoppingList() {
-  // Items with no quantity or a quantity of 0 are treated as "don't need this
-  // one" and left off the printed list, without removing them from the
-  // editable screen — lets you zero something out instead of deleting it.
-  const printable = shoppingList.filter(item => item.qty !== '' && item.qty !== null && item.qty !== undefined && item.qty !== 0);
+  const printable = shoppingList.filter(hasShoppableQty);
   if (printable.length === 0) { showToast('Shopping list is empty'); return; }
 
   const favRecipes = currentFavRecipes();
