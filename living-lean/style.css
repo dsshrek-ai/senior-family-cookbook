@@ -1106,3 +1106,90 @@ html, body {
   margin-top: 6px;
 }
 
+.btn-add-row.hidden { display: none; }
+
+.dept-select-wrapper {
+  margin-top: 6px;
+}
+
+.dept-select-wrapper select {
+  padding: 8px 32px 8px 12px;
+  font-size: 13px;
+}
+
+.dept-select-wrapper .select-arrow {
+  width: 14px;
+  height: 14px;
+  right: 10px;
+}
+
+.shop-empty-msg {
+  text-align: center;
+  color: var(--text-light);
+  font-size: 14px;
+  padding: 40px 0;
+}
+
+/* ---- Shopping mode (check-off) ---- */
+.shop-dept-header-done {
+  color: var(--text-light);
+  border-bottom-color: var(--cream-dark);
+  margin-top: 24px;
+}
+
+.shop-mode-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 4px;
+  border-bottom: 1px solid rgba(44,44,44,0.1);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+.shop-mode-item:active { background: var(--cream-dark); }
+
+.shop-mode-check {
+  position: relative;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid var(--cream-dark);
+  flex-shrink: 0;
+  margin-top: 1px;
+  background: var(--white);
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.shop-mode-item.checked .shop-mode-check {
+  background: var(--green);
+  border-color: var(--green);
+}
+
+.shop-mode-item.checked .shop-mode-check::after {
+  content: '';
+  position: absolute;
+  left: 6px;
+  top: 3px;
+  width: 6px;
+  height: 10px;
+  border: 2px solid var(--white);
+  border-top: none;
+  border-left: none;
+  transform: rotate(45deg);
+}
+
+.shop-mode-text {
+  flex: 1;
+  font-size: 15px;
+  color: var(--text-dark);
+  line-height: 1.45;
+}
+
+.shop-mode-item.checked .shop-mode-text {
+  color: var(--text-light);
+  text-decoration: line-through;
+  opacity: 0.7;
+}
+
