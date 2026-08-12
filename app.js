@@ -80,7 +80,11 @@ async function init() {
     fetch(`${API_URL}?action=whoAmI&appKey=${APP_KEY}`, {
       headers: { 'Authorization': `Bearer ${authToken}` }
     }).then(res => res.json()).then(data => {
-      if (!data.error) {
+      // Check for the field whoAmI actually returns, not just the absence
+      // of an error -- an unexpected/malformed response (e.g. from a
+      // service worker fallback meant for a different action) should be
+      // ignored rather than mistaken for "logged in with no edit rights".
+      if ('canEdit' in data) {
         authName = data.displayName;
         authCanEdit = !!data.canEdit;
         localStorage.setItem(STORAGE_AUTH_NAME, authName);

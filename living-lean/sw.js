@@ -1,4 +1,4 @@
-const CACHE = 'll-v5';
+const CACHE = 'll-v6';
 const ASSETS = [
   './',
   './index.html',
@@ -24,12 +24,14 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
-  // Network first for API reads, with an empty-recipes fallback when offline.
-  // Writes (login/add/update/delete are all POST) are left untouched so a
-  // real network failure surfaces as a real error instead of a silently
-  // "successful" empty response.
+  // Network first for the recipe list specifically, with an empty-recipes
+  // fallback when offline. Every other API request -- whoAmI, login,
+  // add/update/delete -- is left untouched so a real failure surfaces as a
+  // real error. This matters for whoAmI in particular: a fake "success"
+  // here would look like a valid (but edit-less) response and incorrectly
+  // report canEdit as false instead of leaving auth state alone.
   if (e.request.url.includes('seniorfamily.org/api/')) {
-    if (e.request.method === 'GET') {
+    if (e.request.method === 'GET' && e.request.url.includes('action=getAllRecipes')) {
       e.respondWith(
         fetch(e.request).catch(() => new Response('{"recipes":[]}', { headers: { 'Content-Type': 'application/json' }}))
       );
