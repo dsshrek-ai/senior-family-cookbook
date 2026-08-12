@@ -4,16 +4,17 @@
 
 const API_URL    = 'https://seniorfamily.org/api/api.php';
 const COLLECTION = 'living-lean';
+const APP_KEY    = 'living-lean'; // My Apps Hub app_key for app_access/can_edit lookups
 const STORAGE_KEY      = 'llAllRecipes';
 const STORAGE_BACKUP   = 'llAllRecipesBackup';
 const STORAGE_UPDATED  = 'llLastUpdated';
 const STORAGE_FAVS     = 'llFavorites';
 const STORAGE_FAV_SCALES = 'llFavScales';
 const STORAGE_EXCL     = 'llExcluded';
-const STORAGE_AUTH_TOKEN      = 'llAuthToken';
-const STORAGE_AUTH_NAME       = 'llAuthName';
-const STORAGE_AUTH_COLLECTION = 'llAuthCollection';
-const STORAGE_SHOPPING_LIST   = 'llShoppingList';
+const STORAGE_AUTH_TOKEN    = 'llAuthToken';
+const STORAGE_AUTH_NAME     = 'llAuthName';
+const STORAGE_AUTH_CAN_EDIT = 'llAuthCanEdit';
+const STORAGE_SHOPPING_LIST = 'llShoppingList';
 
 // ---- State ----
 let allData        = null;   // { recipeList, recipes }
@@ -26,9 +27,9 @@ let favorites      = new Set(JSON.parse(localStorage.getItem(STORAGE_FAVS) || '[
 let favoritesOnly  = false;
 let favScales      = JSON.parse(localStorage.getItem(STORAGE_FAV_SCALES) || '{}');
 let excl           = JSON.parse(localStorage.getItem(STORAGE_EXCL) || '{}');
-let authToken      = localStorage.getItem(STORAGE_AUTH_TOKEN) || null;
-let authName       = localStorage.getItem(STORAGE_AUTH_NAME) || null;
-let authCollection = JSON.parse(localStorage.getItem(STORAGE_AUTH_COLLECTION) || 'null');
+let authToken   = localStorage.getItem(STORAGE_AUTH_TOKEN) || null;
+let authName    = localStorage.getItem(STORAGE_AUTH_NAME) || null;
+let authCanEdit = localStorage.getItem(STORAGE_AUTH_CAN_EDIT) === 'true';
 let editingRecipeId = null; // null while adding a new recipe; set to an id while editing
 let shoppingList    = []; // current editable list: [{ name, qty, unit, dept, deptManual, checked }]
 let shoppingMode    = false; // false = edit mode, true = check-off shopping mode
@@ -62,6 +63,33 @@ window.addEventListener('load', init);
 
 async function init() {
   registerSW();
+
+  // Single sign-on: My Apps Hub launches this app with ?token=... when the
+  // visitor is already logged in there, so this skips the login screen.
+  // canEdit starts false (fail closed) until whoAmI confirms it, so the
+  // Add Recipe/Edit/Delete buttons never flash on before we know for sure.
+  const ssoToken = new URLSearchParams(window.location.search).get('token');
+  if (ssoToken) {
+    authToken = ssoToken;
+    authName = null;
+    authCanEdit = false;
+    localStorage.setItem(STORAGE_AUTH_TOKEN, authToken);
+    localStorage.removeItem(STORAGE_AUTH_NAME);
+    localStorage.removeItem(STORAGE_AUTH_CAN_EDIT);
+    window.history.replaceState({}, document.title, window.location.pathname);
+    fetch(`${API_URL}?action=whoAmI&appKey=${APP_KEY}`, {
+      headers: { 'Authorization': `Bearer ${authToken}` }
+    }).then(res => res.json()).then(data => {
+      if (!data.error) {
+        authName = data.displayName;
+        authCanEdit = !!data.canEdit;
+        localStorage.setItem(STORAGE_AUTH_NAME, authName);
+        localStorage.setItem(STORAGE_AUTH_CAN_EDIT, String(authCanEdit));
+        updateAuthUI();
+      }
+    }).catch(() => {});
+  }
+
   const stored = localStorage.getItem(STORAGE_KEY);
   if (stored) {
     try {
@@ -1372,7 +1400,7 @@ function isLoggedIn() {
 }
 
 function canEdit() {
-  return isLoggedIn() && (authCollection === null || authCollection === COLLECTION);
+  return isLoggedIn() && authCanEdit;
 }
 
 function updateAuthUI() {
@@ -1415,17 +1443,17 @@ async function doLogin() {
     const res = await fetch(`${API_URL}?action=login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password })
+      body: JSON.stringify({ username, password, appKey: APP_KEY })
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Login failed');
 
-    authToken      = data.token;
-    authName       = data.displayName || username;
-    authCollection = data.collection ?? null;
+    authToken   = data.token;
+    authName    = data.displayName || username;
+    authCanEdit = !!data.canEdit;
     localStorage.setItem(STORAGE_AUTH_TOKEN, authToken);
     localStorage.setItem(STORAGE_AUTH_NAME, authName);
-    localStorage.setItem(STORAGE_AUTH_COLLECTION, JSON.stringify(authCollection));
+    localStorage.setItem(STORAGE_AUTH_CAN_EDIT, String(authCanEdit));
 
     closeLoginScreen();
     updateAuthUI();
@@ -1440,10 +1468,10 @@ function doLogout() {
   const token = authToken;
   authToken = null;
   authName = null;
-  authCollection = null;
+  authCanEdit = false;
   localStorage.removeItem(STORAGE_AUTH_TOKEN);
   localStorage.removeItem(STORAGE_AUTH_NAME);
-  localStorage.removeItem(STORAGE_AUTH_COLLECTION);
+  localStorage.removeItem(STORAGE_AUTH_CAN_EDIT);
   updateAuthUI();
   showToast('Logged out');
 

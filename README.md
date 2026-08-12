@@ -1,36 +1,39 @@
-# Senior Family Cookbook PWA
+# Senior Family Cookbook / Living Lean
 
-A Progressive Web App for the Senior Family Cookbook, installable on Android and iOS.
+Two Progressive Web Apps sharing one backend: **Senior Family Cookbook**
+(root of this repo) and **Living Lean** (`living-lean/`), a personal
+low-carb/low-cal collection. Both are installable on Android/iOS and are
+public — anyone can browse, scale servings, favorite, and build a shopping
+list with no login. Only adding/editing a recipe requires an account with
+edit rights.
 
-## Setup on GitHub Pages
-
-1. Go to github.com and create a new repository named `senior-family-cookbook`
-2. Upload all files from this folder to the repository
-3. Go to Settings → Pages
-4. Under "Source" select "Deploy from a branch"
-5. Select "main" branch and "/ (root)" folder
-6. Click Save
-7. Your app will be live at: https://dsshrek-ai.github.io/senior-family-cookbook
-
-## Install on Android
-
-1. Open Chrome on your Android phone
-2. Go to https://dsshrek-ai.github.io/senior-family-cookbook
-3. Tap the menu (⋮) → "Add to Home screen"
-4. Tap Add
-5. The app icon will appear on your home screen
+See [SETUP.md](SETUP.md) for deployment (database, API, GitHub Pages,
+granting edit access, and migrating off the old standalone database).
 
 ## Files
 
-- `index.html` — Main app HTML
-- `style.css` — All styles
-- `app.js` — App logic (recipes, caching, scaling)
-- `sw.js` — Service worker (offline support)
-- `manifest.json` — PWA manifest
-- `icon-192.png` — App icon (192×192)
-- `icon-512.png` — App icon (512×512)
+- `index.html`, `app.js`, `style.css`, `sw.js`, `manifest.json` — Senior
+  Family Cookbook
+- `living-lean/` — the same app, re-skinned and re-branded for Living Lean
+  (near-identical `app.js`/`index.html`/`style.css`; differences are
+  branding, theme colors, and `localStorage` key prefixes)
+- `api/api.php` — shared backend for both apps: public recipe reads,
+  gated add/edit/delete
+- `api/schema.sql` — database tables (`users`, `sessions`,
+  `cookbook_recipes`, `cookbook_tags`, `cookbook_recipe_tags`)
+- `api/config.example.php` — copy to `api/config.php` with real DB
+  credentials (gitignored)
 
-## Updating Recipes
+## Accounts
 
-Just update your Google Sheet — the app will fetch fresh data when you tap Refresh.
-No code changes needed.
+No signup here — this shares the same login as My Apps Hub, T-Minus, Shed
+Inventory, PWI Weight Tracker, and Choir Admin Panel (all on MyDataWorld).
+Sign up through My Apps Hub, then ask to be granted edit access to
+whichever cookbook(s) you maintain.
+
+## Single sign-on
+
+If `apps.sso_enabled = 1` is set for `senior-family-cookbook`/`living-lean`
+in My Apps Hub's database, launching either app from the Hub logs you in
+automatically — if your account has edit rights there, the Add/Edit/Delete
+buttons are already unlocked on arrival.

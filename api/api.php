@@ -3,6 +3,16 @@ require_once __DIR__ . '/config.php';
 
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
+// Never let a raw PHP error/notice leak through as HTML — every response
+// this API sends must be JSON.
+ini_set('display_errors', '0');
+set_exception_handler(function ($e) {
+  http_response_code(500);
+  header('Content-Type: application/json; charset=utf-8');
+  echo json_encode(['success' => false, 'error' => 'Server error: ' . $e->getMessage()]);
+  exit;
+});
+
 header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Headers: Content-Type, Authorization');
@@ -44,6 +54,32 @@ function jsonBody(): array {
 
 // ---- Auth helpers ----
 
+// Which My Apps Hub app_key each recipe collection maps to, for app_access
+// lookups. Both are already registered there as public apps (is_public=1) —
+// browsing/scaling/favoriting/shopping-lists stay open to everyone; only
+// add/edit/delete requires a can_edit grant for the matching app_key.
+$COLLECTION_APP_KEYS = [
+  'senior-family' => 'senior-family-cookbook',
+  'living-lean'   => 'living-lean',
+];
+
+function appKeyForCollection(string $collection): ?string {
+  global $COLLECTION_APP_KEYS;
+  return $COLLECTION_APP_KEYS[$collection] ?? null;
+}
+
+function appHasCanEdit(int $userId, string $appKey): bool {
+  $stmt = db()->prepare(
+    'SELECT 1 FROM app_access aa JOIN apps a ON a.id = aa.app_id
+     WHERE aa.user_id = ? AND a.app_key = ? AND aa.can_edit = 1'
+  );
+  $stmt->bind_param('is', $userId, $appKey);
+  $stmt->execute();
+  $ok = $stmt->get_result()->fetch_row();
+  $stmt->close();
+  return (bool)$ok;
+}
+
 function requireUser(): array {
   $header = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
   if (!preg_match('/^Bearer\s+(.+)$/i', $header, $m)) {
@@ -52,7 +88,7 @@ function requireUser(): array {
   $token = $m[1];
 
   $stmt = db()->prepare(
-    'SELECT u.id, u.username, u.display_name, u.collection
+    'SELECT u.id, u.username, u.display_name
      FROM sessions s JOIN users u ON u.id = s.user_id
      WHERE s.token = ? AND s.expires_at > NOW()'
   );
@@ -67,16 +103,15 @@ function requireUser(): array {
   return $result;
 }
 
-// A user with collection === null may edit any collection; otherwise they're
-// restricted to editing only their own.
-function requireCollectionAccess(array $user, string $collection): void {
-  if ($user['collection'] !== null && $user['collection'] !== $collection) {
+function requireCanEdit(array $user, string $collection): void {
+  $appKey = appKeyForCollection($collection);
+  if ($appKey === null || !appHasCanEdit((int)$user['id'], $appKey)) {
     fail('You are not authorized to edit this cookbook', 403);
   }
 }
 
 function recipeCollection(int $recipeId): string {
-  $stmt = db()->prepare('SELECT collection FROM recipes WHERE id = ?');
+  $stmt = db()->prepare('SELECT collection FROM cookbook_recipes WHERE id = ?');
   $stmt->bind_param('i', $recipeId);
   $stmt->execute();
   $row = $stmt->get_result()->fetch_assoc();
@@ -91,8 +126,8 @@ function recipeCollection(int $recipeId): string {
 
 function tagsForRecipe(int $recipeId): string {
   $stmt = db()->prepare(
-    'SELECT t.name FROM tags t
-     JOIN recipe_tags rt ON rt.tag_id = t.id
+    'SELECT t.name FROM cookbook_tags t
+     JOIN cookbook_recipe_tags rt ON rt.tag_id = t.id
      WHERE rt.recipe_id = ?
      ORDER BY t.name'
   );
@@ -146,7 +181,7 @@ function titleCaseTag(string $name): string {
 
 function syncTags(int $recipeId, array $tagNames): void {
   $conn = db();
-  $del = $conn->prepare('DELETE FROM recipe_tags WHERE recipe_id = ?');
+  $del = $conn->prepare('DELETE FROM cookbook_recipe_tags WHERE recipe_id = ?');
   $del->bind_param('i', $recipeId);
   $del->execute();
   $del->close();
@@ -158,18 +193,18 @@ function syncTags(int $recipeId, array $tagNames): void {
     }
     $name = titleCaseTag($name);
 
-    $ins = $conn->prepare('INSERT IGNORE INTO tags (name) VALUES (?)');
+    $ins = $conn->prepare('INSERT IGNORE INTO cookbook_tags (name) VALUES (?)');
     $ins->bind_param('s', $name);
     $ins->execute();
     $ins->close();
 
-    $sel = $conn->prepare('SELECT id FROM tags WHERE name = ?');
+    $sel = $conn->prepare('SELECT id FROM cookbook_tags WHERE name = ?');
     $sel->bind_param('s', $name);
     $sel->execute();
     $tagId = (int)$sel->get_result()->fetch_assoc()['id'];
     $sel->close();
 
-    $link = $conn->prepare('INSERT IGNORE INTO recipe_tags (recipe_id, tag_id) VALUES (?, ?)');
+    $link = $conn->prepare('INSERT IGNORE INTO cookbook_recipe_tags (recipe_id, tag_id) VALUES (?, ?)');
     $link->bind_param('ii', $recipeId, $tagId);
     $link->execute();
     $link->close();
@@ -209,20 +244,20 @@ switch ($action) {
   case 'getAllRecipes': {
     $collection = $_GET['collection'] ?? null;
     if ($collection !== null) {
-      $stmt = db()->prepare('SELECT * FROM recipes WHERE collection = ? ORDER BY name');
+      $stmt = db()->prepare('SELECT * FROM cookbook_recipes WHERE collection = ? ORDER BY name');
       $stmt->bind_param('s', $collection);
       $stmt->execute();
       $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
       $stmt->close();
     } else {
-      $rows = db()->query('SELECT * FROM recipes ORDER BY name')->fetch_all(MYSQLI_ASSOC);
+      $rows = db()->query('SELECT * FROM cookbook_recipes ORDER BY name')->fetch_all(MYSQLI_ASSOC);
     }
     respond(['recipes' => array_map('shapeRecipe', $rows)]);
   }
 
   case 'getRecipe': {
     $id = (int)($_GET['id'] ?? 0);
-    $stmt = db()->prepare('SELECT * FROM recipes WHERE id = ?');
+    $stmt = db()->prepare('SELECT * FROM cookbook_recipes WHERE id = ?');
     $stmt->bind_param('i', $id);
     $stmt->execute();
     $row = $stmt->get_result()->fetch_assoc();
@@ -237,11 +272,12 @@ switch ($action) {
     $body = jsonBody();
     $username = trim((string)($body['username'] ?? ''));
     $password = (string)($body['password'] ?? '');
+    $appKey = trim((string)($body['appKey'] ?? ''));
     if ($username === '' || $password === '') {
       fail('Username and password are required');
     }
 
-    $stmt = db()->prepare('SELECT id, password_hash, display_name, collection FROM users WHERE username = ?');
+    $stmt = db()->prepare('SELECT id, password_hash, display_name FROM users WHERE username = ?');
     $stmt->bind_param('s', $username);
     $stmt->execute();
     $user = $stmt->get_result()->fetch_assoc();
@@ -260,7 +296,9 @@ switch ($action) {
     $ins->execute();
     $ins->close();
 
-    respond(['token' => $token, 'displayName' => $user['display_name'], 'collection' => $user['collection']]);
+    $canEdit = $appKey !== '' ? appHasCanEdit((int)$user['id'], $appKey) : false;
+
+    respond(['token' => $token, 'displayName' => $user['display_name'], 'canEdit' => $canEdit]);
   }
 
   case 'logout': {
@@ -275,13 +313,22 @@ switch ($action) {
     respond(['success' => true]);
   }
 
+  // Lets a page that arrived via a My Apps Hub ?token= handoff find out its
+  // display name and edit rights without needing a username/password.
+  case 'whoAmI': {
+    $user = requireUser();
+    $appKey = trim((string)($_GET['appKey'] ?? ''));
+    $canEdit = $appKey !== '' ? appHasCanEdit((int)$user['id'], $appKey) : false;
+    respond(['displayName' => $user['display_name'], 'canEdit' => $canEdit]);
+  }
+
   case 'addRecipe': {
     $user = requireUser();
     $fields = recipeFieldsFromBody(jsonBody());
-    requireCollectionAccess($user, $fields['collection']);
+    requireCanEdit($user, $fields['collection']);
 
     $stmt = db()->prepare(
-      'INSERT INTO recipes
+      'INSERT INTO cookbook_recipes
        (name, collection, category, base_servings, prep_time, cook_time, total_time, tested, story, nutrition, notes, ingredients, steps)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
     );
@@ -307,12 +354,12 @@ switch ($action) {
     if ($id <= 0) {
       fail('Recipe id is required');
     }
-    requireCollectionAccess($user, recipeCollection($id));
+    requireCanEdit($user, recipeCollection($id));
     $fields = recipeFieldsFromBody($body);
-    requireCollectionAccess($user, $fields['collection']);
+    requireCanEdit($user, $fields['collection']);
 
     $stmt = db()->prepare(
-      'UPDATE recipes SET
+      'UPDATE cookbook_recipes SET
          name = ?, collection = ?, category = ?, base_servings = ?, prep_time = ?, cook_time = ?, total_time = ?,
          tested = ?, story = ?, nutrition = ?, notes = ?, ingredients = ?, steps = ?
        WHERE id = ?'
@@ -338,8 +385,8 @@ switch ($action) {
     if ($id <= 0) {
       fail('Recipe id is required');
     }
-    requireCollectionAccess($user, recipeCollection($id));
-    $stmt = db()->prepare('DELETE FROM recipes WHERE id = ?');
+    requireCanEdit($user, recipeCollection($id));
+    $stmt = db()->prepare('DELETE FROM cookbook_recipes WHERE id = ?');
     $stmt->bind_param('i', $id);
     $stmt->execute();
     $stmt->close();
